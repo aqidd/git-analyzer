@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Activity, GitBranch, FileText, TestTube2, Shield, Rocket, Calculator, Trophy, ArrowLeft } from 'lucide-react';
 import { AnalyticsScore, Repository } from '../types/gitlab';
 import { DocumentationDetails } from './DocumentationDetails';
@@ -11,6 +11,7 @@ import { DocumentFile, DocumentationAnalysis } from '../services/documentation';
 import { CalculationMethods } from './CalculationMethods';
 import { ContributorSection } from './ContributorSection';
 import { ContributorStats } from '../types/gitlab';
+import { TimePeriodSelector, TimePeriod } from './TimePeriodSelector';
 
 interface DashboardProps {
   score: AnalyticsScore;
@@ -26,68 +27,34 @@ interface DashboardProps {
   documentationFiles?: Array<{
     file: DocumentFile;
     analysis: DocumentationAnalysis;
-    score: number;
   }>;
-  commits?: Array<{
-    id: string;
-    title: string;
-    message: string;
-    stats: { additions: number; deletions: number; total: number };
-    created_at: string;
-    analysis: {
-      isConventional: boolean;
-      problems: string[];
-    };
-  }>;
-  deployments?: Array<{
-    id: number;
-    status: string;
-    ref: string;
-    sha: string;
-    created_at: string;
-    updated_at: string;
-    message?: string;
-  }>;
-  deploymentMetrics?: {
-    frequency: number;
-    successRate: number;
-    avgTimeBetween: number;
-    pipelineEfficiency: number;
-    rollbackRate: number;
-  };
-  testFiles?: Array<{
-    path: string;
-    content: string;
-  }>;
-  testMetrics?: {
-    coverage: number;
-    unitTestCount: number;
-    integrationTestCount: number;
-    e2eTestCount: number;
-    avgExecutionTime: number;
-    reliability: number;
-  };
-  securityMetrics?: {
-    vulnerabilityCount: number;
-    exposedSecretsCount: number;
-    avgPatchTime: number;
-    securityScore: number;
-  };
-  securityIssues?: Array<{
-    file: string;
-    type: string;
-    severity: 'high' | 'medium' | 'low';
-  }>;
+  commits?: any[];
+  testFiles?: any[];
+  testMetrics?: any;
+  deployments?: any[];
+  deploymentMetrics?: any;
+  securityMetrics?: any;
+  securityIssues?: any[];
   contributors?: ContributorStats[];
+  onTimePeriodChange?: (days: TimePeriod) => void;
+  error?: string | null;
 }
 
-const ScoreCard: React.FC<{
+interface ScoreCardProps {
   title: string;
   score: number;
-  loading?: boolean;
+  loading: boolean;
   icon: React.ReactNode;
-  onClick?: () => void;
-}> = ({ title, score, loading, icon, onClick }) => (
+  onClick: () => void;
+}
+
+const ScoreCard: React.FC<ScoreCardProps> = ({
+  title,
+  score,
+  loading,
+  icon,
+  onClick,
+}) => (
   <div className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow"
        onClick={onClick}>
     <div className="flex items-center justify-between mb-4">
@@ -108,7 +75,7 @@ const ScoreCard: React.FC<{
   </div>
 );
 
-export const Dashboard: React.FC<DashboardProps> = ({ 
+export const Dashboard: React.FC<DashboardProps> = ({
   score, 
   repository, 
   loadingStates,
@@ -122,15 +89,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
   securityMetrics,
   securityIssues = [],
   contributors = [],
+  onTimePeriodChange,
+  error,
 }) => {
   const [showDocDetails, setShowDocDetails] = useState(false);
-  const [showCommitDetails, setShowCommitDetails] = useState(false);
   const [showTestDetails, setShowTestDetails] = useState(false);
-  const [showDeploymentDetails, setShowDeploymentDetails] = useState(false);
+  const [showCommitDetails, setShowCommitDetails] = useState(false);
   const [showSecurityDetails, setShowSecurityDetails] = useState(false);
+  const [showDeploymentDetails, setShowDeploymentDetails] = useState(false);
   const [showOverallHealth, setShowOverallHealth] = useState(false);
   const [showCalculationMethods, setShowCalculationMethods] = useState(false);
-  const [showContributors, setShowContributors] = useState(false);
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>(30);
+
+  useEffect(() => {
+    if (onTimePeriodChange) {
+      onTimePeriodChange(timePeriod);
+    }
+  }, [timePeriod, onTimePeriodChange]);
 
   return (
     <div className="p-6">
@@ -151,7 +126,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
               Comprehensive analysis of repository health and performance metrics
             </p>
           </div>
-          <div>
+          <div className="flex items-center space-x-4">
+            <TimePeriodSelector value={timePeriod} onChange={setTimePeriod} />
             <button
               onClick={() => setShowCalculationMethods(true)}
               className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700"
@@ -161,59 +137,86 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </button>
           </div>
         </div>
+
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error</h3>
+                <p className="text-sm text-red-700 mt-1">{error}</p>
+                <button
+                  onClick={onBackToList}
+                  className="mt-2 text-sm font-medium text-red-600 hover:text-red-500"
+                >
+                  Return to Repository List
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <ScoreCard
-          title="Documentation"
-          score={score.documentation}
-          loading={loadingStates.documentation}
-          icon={<FileText className="w-6 h-6" />}
-          onClick={() => setShowDocDetails(true)}
-        />
-        <ScoreCard
-          title="Testing"
-          score={score.testing}
-          loading={loadingStates.testing}
-          icon={<TestTube2 className="w-6 h-6" />}
-          onClick={() => setShowTestDetails(true)}
-        />
-        <ScoreCard
-          title="Commit Quality"
-          score={score.commits}
-          loading={loadingStates.commits}
-          icon={<GitBranch className="w-6 h-6" />}
-          onClick={() => setShowCommitDetails(true)}
-        />
-        <ScoreCard
-          title="Security"
-          score={score.security}
-          loading={loadingStates.security}
-          icon={<Shield className="w-6 h-6" />}
-          onClick={() => setShowSecurityDetails(true)}
-        />
-        <ScoreCard
-          title="Deployment"
-          score={score.deployment}
-          loading={loadingStates.deployment}
-          icon={<Rocket className="w-6 h-6" />}
-          onClick={() => setShowDeploymentDetails(true)}
-        />
-        <ScoreCard
-          title="Overall Health"
-          score={score.overall}
-          loading={Object.values(loadingStates).some(Boolean)}
-          icon={<Activity className="w-6 h-6" />}
-          onClick={() => setShowOverallHealth(true)}
-        />
-      </div>
+      {!error && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <ScoreCard
+              title="Documentation"
+              score={score.documentation}
+              loading={loadingStates.documentation}
+              icon={<FileText className="w-6 h-6" />}
+              onClick={() => setShowDocDetails(true)}
+            />
+            <ScoreCard
+              title="Testing"
+              score={score.testing}
+              loading={loadingStates.testing}
+              icon={<TestTube2 className="w-6 h-6" />}
+              onClick={() => setShowTestDetails(true)}
+            />
+            <ScoreCard
+              title="Commit Quality"
+              score={score.commits}
+              loading={loadingStates.commits}
+              icon={<GitBranch className="w-6 h-6" />}
+              onClick={() => setShowCommitDetails(true)}
+            />
+            <ScoreCard
+              title="Security"
+              score={score.security}
+              loading={loadingStates.security}
+              icon={<Shield className="w-6 h-6" />}
+              onClick={() => setShowSecurityDetails(true)}
+            />
+            <ScoreCard
+              title="Deployment"
+              score={score.deployment}
+              loading={loadingStates.deployment}
+              icon={<Rocket className="w-6 h-6" />}
+              onClick={() => setShowDeploymentDetails(true)}
+            />
+            <ScoreCard
+              title="Overall Health"
+              score={score.overall}
+              loading={Object.values(loadingStates).some(Boolean)}
+              icon={<Activity className="w-6 h-6" />}
+              onClick={() => setShowOverallHealth(true)}
+            />
+          </div>
 
-      <ContributorSection contributors={contributors} />
+          <ContributorSection contributors={contributors} timePeriod={timePeriod} />
+        </>
+      )}
 
       {showDocDetails && (
         <DocumentationDetails
           files={documentationFiles}
           onClose={() => setShowDocDetails(false)}
+          timePeriod={timePeriod}
         />
       )}
       {showTestDetails && testMetrics && (
@@ -221,12 +224,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
           files={testFiles}
           metrics={testMetrics}
           onClose={() => setShowTestDetails(false)}
+          timePeriod={timePeriod}
         />
       )}
       {showCommitDetails && (
         <CommitDetails
           commits={commits}
           onClose={() => setShowCommitDetails(false)}
+          timePeriod={timePeriod}
         />
       )}
       {showDeploymentDetails && deploymentMetrics && (
@@ -234,19 +239,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
           deployments={deployments}
           metrics={deploymentMetrics}
           onClose={() => setShowDeploymentDetails(false)}
+          timePeriod={timePeriod}
         />
       )}
       {showSecurityDetails && securityMetrics && (
         <SecurityDetails
           metrics={securityMetrics}
-          vulnerabilities={securityIssues}
+          issues={securityIssues}
           onClose={() => setShowSecurityDetails(false)}
+          timePeriod={timePeriod}
         />
       )}
       {showOverallHealth && (
         <OverallHealthDetails
           score={score}
           onClose={() => setShowOverallHealth(false)}
+          timePeriod={timePeriod}
         />
       )}
       {showCalculationMethods && (
@@ -254,12 +262,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           onClose={() => setShowCalculationMethods(false)}
         />
       )}
-      {showContributors && (
-        <ContributorLeaderboard
-          contributors={contributors}
-          onClose={() => setShowContributors(false)}
-        />
-      )}
     </div>
   );
-}
+};

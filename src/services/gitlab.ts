@@ -1,4 +1,4 @@
-import { GitLabConfig, Repository } from '../types/gitlab';
+import { GitLabConfig, Repository, ContributorStats } from '../types/gitlab';
 
 export class GitLabService {
   private config: GitLabConfig;
@@ -231,9 +231,13 @@ export class GitLabService {
     }>>(`/projects/${projectId}/pipelines/${pipelineId}/jobs`);
   }
 
-  async getContributors(id: number): Promise<ContributorStats[]> {
-    const since = new Date();
-    since.setDate(since.getDate() - 90); // Last 90 days
+  async getContributors(id: number, since?: Date): Promise<ContributorStats[]> {
+    const params = new URLSearchParams();
+    params.append('with_stats', 'true');
+    
+    if (since) {
+      params.append('since', since.toISOString());
+    }
     
     // Get all commits with stats
     const commits = await this.fetch<Array<{
@@ -241,7 +245,7 @@ export class GitLabService {
       author_name: string;
       author_email: string;
       stats: { additions: number; deletions: number; total: number };
-    }>>(`/projects/${id}/repository/commits?since=${since.toISOString()}&with_stats=true`);
+    }>>(`/projects/${id}/repository/commits?${params.toString()}`);
     
     // Get merge requests
     const mergeRequests = await this.fetch<Array<{
@@ -253,75 +257,69 @@ export class GitLabService {
         avatar_url: string; 
         email?: string;
       };
-    }>>(`/projects/${id}/merge_requests?state=merged&created_after=${since.toISOString()}`);
-    
-    // Aggregate contributor stats
-    const contributorMap = new Map<string, ContributorStats>();
+      created_at: string;
+      merged_at?: string;
+      state: string;
+    }>>(`/projects/${id}/merge_requests?state=merged${since ? `&updated_after=${since.toISOString()}` : ''}`);
+
+    // Group commits by author
+    const contributorStats = new Map<string, ContributorStats>();
     
     // Process commits
-    (commits || []).forEach(commit => {
-      const key = commit.author_email;
-      const stats = contributorMap.get(key) || {
-        id: 0,
-        name: commit.author_name,
-        email: commit.author_email,
-        avatarUrl: '',
-        commitCount: 0,
-        mergeRequestCount: 0,
+    for (const commit of commits) {
+      const key = commit.author_email || commit.author_name;
+      const stats = contributorStats.get(key) || {
+        author_name: commit.author_name,
+        author_email: commit.author_email,
+        commits: 0,
         additions: 0,
         deletions: 0,
-        totalChanges: 0,
-        score: 0
+        total_changes: 0,
+        merge_requests: 0,
+        score: 0,
       };
       
-      stats.commitCount++;
+      stats.commits++;
       stats.additions += commit.stats.additions;
       stats.deletions += commit.stats.deletions;
-      stats.totalChanges += commit.stats.total;
-      
-      contributorMap.set(key, stats);
-    });
+      stats.total_changes += commit.stats.total;
+      contributorStats.set(key, stats);
+    }
     
     // Process merge requests
-    if (Array.isArray(mergeRequests)) {
-      mergeRequests.forEach(mr => {
-        if (!mr.author) return;
-        
-        const key = mr.author.email || mr.author.username;
-        const stats = contributorMap.get(key) || {
-          id: mr.author.id,
-          name: mr.author.name,
-          email: key,
-          avatarUrl: mr.author.avatar_url,
-          commitCount: 0,
-          mergeRequestCount: 0,
+    for (const mr of mergeRequests) {
+      if (mr.state === 'merged') {
+        const key = mr.author.email || mr.author.name;
+        const stats = contributorStats.get(key) || {
+          author_name: mr.author.name,
+          author_email: mr.author.email,
+          commits: 0,
           additions: 0,
           deletions: 0,
-          totalChanges: 0,
-          score: 0
+          total_changes: 0,
+          merge_requests: 0,
+          score: 0,
         };
         
-        stats.mergeRequestCount++;
-        stats.avatarUrl = mr.author.avatar_url;
-        
-        contributorMap.set(key, stats);
-      });
+        stats.merge_requests++;
+        contributorStats.set(key, stats);
+      }
     }
     
     // Calculate scores and convert to array
-    const contributors = Array.from(contributorMap.values()).map(stats => ({
-      ...stats,
-      score: this.calculateContributorScore(stats)
-    }));
+    const result = Array.from(contributorStats.values());
+    result.forEach(stats => {
+      stats.score = this.calculateContributorScore(stats);
+    });
     
     // Sort by score descending
-    return contributors.sort((a, b) => b.score - a.score);
+    return result.sort((a, b) => b.score - a.score);
   }
 
   private calculateContributorScore(stats: ContributorStats): number {
-    const commitScore = Math.min(stats.commitCount * 10, 100);
-    const mrScore = Math.min(stats.mergeRequestCount * 20, 100);
-    const changeScore = Math.min(stats.totalChanges / 1000, 100);
+    const commitScore = Math.min(stats.commits * 10, 100);
+    const mrScore = Math.min(stats.merge_requests * 20, 100);
+    const changeScore = Math.min(stats.total_changes / 1000, 100);
     
     return Math.round((commitScore + mrScore + changeScore) / 3);
   }

@@ -89,7 +89,7 @@ const SecurityIssueCard: React.FC<{
 
 export const SecurityDetails: React.FC<SecurityDetailsProps> = ({
   metrics,
-  vulnerabilities,
+  vulnerabilities = [],
   onClose,
 }) => (
   <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -174,7 +174,7 @@ export const SecurityDetails: React.FC<SecurityDetailsProps> = ({
       </div>
       
       <div className="p-6 overflow-y-auto space-y-4">
-        {vulnerabilities.length === 0 ? (
+        {vulnerabilities && vulnerabilities.length === 0 ? (
           <div className="text-center py-8">
             <Shield className="w-12 h-12 text-green-500 mx-auto mb-4" />
             <p className="text-gray-500">No security issues detected</p>
