@@ -439,6 +439,7 @@ export const App: React.FC = () => {
       await delay(500);
 
       // Contributors
+      setLoadingStates(prev => ({ ...prev, contributors: true }));
       const startDate = calculateDaysAgo(days);
       const repoContributors = await fetchWithRetry(() => gitlabService.getContributors(repo.id, startDate));
       setContributors(repoContributors.slice(0, 10));

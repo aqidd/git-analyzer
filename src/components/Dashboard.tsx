@@ -22,6 +22,7 @@ interface DashboardProps {
     commits: boolean;
     security: boolean;
     deployment: boolean;
+    contributors: boolean;
   };
   onBackToList: () => void;
   documentationFiles?: Array<{
@@ -107,6 +108,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
   }, [timePeriod, onTimePeriodChange]);
 
+  const handleBackClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onBackToList();
+  };
+
   return (
     <div className="p-6">
       <div className="mb-8">
@@ -114,26 +120,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div>
             <div className="flex items-center space-x-2 mb-2">
               <button
-                onClick={onBackToList}
+                onClick={handleBackClick}
                 className="inline-flex items-center text-gray-600 hover:text-gray-900"
               >
                 <ArrowLeft className="w-5 h-5 mr-1" />
                 Back to Repositories
               </button>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">{repository.name}</h1>
-            <p className="text-gray-600 mt-2">
-              Comprehensive analysis of repository health and performance metrics
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900">{repository.name}</h1>
+            <p className="text-gray-500 mt-1">{repository.description || 'No description provided'}</p>
           </div>
           <div className="flex items-center space-x-4">
             <TimePeriodSelector value={timePeriod} onChange={setTimePeriod} />
             <button
               onClick={() => setShowCalculationMethods(true)}
-              className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700"
+              className="inline-flex items-center text-gray-600 hover:text-gray-900"
             >
-              <Calculator className="w-4 h-4 mr-1" />
-              View Calculation Methods
+              <Calculator className="w-5 h-5 mr-1" />
+              Calculation Methods
             </button>
           </div>
         </div>
@@ -208,7 +212,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
             />
           </div>
 
-          <ContributorSection contributors={contributors} timePeriod={timePeriod} />
+          <ContributorSection 
+            contributors={contributors}
+            isLoading={loadingStates.contributors} 
+            timePeriod={timePeriod}
+          />
         </>
       )}
 
