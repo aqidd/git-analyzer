@@ -32,7 +32,7 @@ export class DeploymentAnalyzer {
     // Calculate deployment frequency (deployments per day)
     const daysDiff = (new Date().getTime() - since.getTime()) / (1000 * 60 * 60 * 24);
     const deploymentPipelines = pipelines.filter(p => 
-      p.ref === 'main' || p.ref === 'master' || p.ref.startsWith('release/')
+      p.ref === 'main' || p.ref === 'master' || p.ref.startsWith('release/') || p.ref.startsWith('revert-')
     );
     const frequency = deploymentPipelines.length / daysDiff;
     console.log('Deployment frequency:', frequency.toFixed(2), 'per day');
@@ -79,10 +79,11 @@ export class DeploymentAnalyzer {
 
     // Calculate rollback rate (deployments that were rolled back)
     const rollbacks = deploymentPipelines.filter(p => 
-      p.status === 'success' && 
-      p.ref.startsWith('revert-') || 
-      p.message?.toLowerCase().includes('rollback') ||
-      p.message?.toLowerCase().includes('revert')
+      p.status === 'success' && (
+        p.ref.startsWith('revert-') || 
+        (p.message?.toLowerCase().includes('rollback') ||
+        p.message?.toLowerCase().includes('revert'))
+      )
     );
     const rollbackRate = successfulPipelines.length > 0
       ? rollbacks.length / successfulPipelines.length

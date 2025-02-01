@@ -87,18 +87,21 @@ export class CommitAnalyzer {
       problems.push('large-changes');
     }
 
-    const uninformativePatterns = [
-      /^fix$/i,
-      /^update$/i,
-      /^changes$/i,
-      /^wip$/i,
-      /^temp$/i,
-      /^testing$/i,
-      /^commit$/i,
-      /^[.]+$/,
-    ];
-    if (uninformativePatterns.some(pattern => pattern.test(commit.title.trim()))) {
-      problems.push('uninformative-message');
+    // Skip uninformative message check for conventional commits
+    if (!this.isConventionalCommit(commit.title)) {
+      const uninformativePatterns = [
+        /^fix\b/i,
+        /^update\b/i,
+        /^changes\b/i,
+        /^wip\b/i,
+        /^temp\b/i,
+        /^testing\b/i,
+        /^commit\b/i,
+        /^[.]+$/,
+      ];
+      if (uninformativePatterns.some(pattern => pattern.test(commit.title.trim()))) {
+        problems.push('uninformative-message');
+      }
     }
 
     if (commit.message.includes('<<<<<<<') || commit.message.includes('>>>>>>>')) {
