@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, GitBranch, FileText, TestTube2, Shield, Rocket, Calculator, Trophy } from 'lucide-react';
+import { Activity, GitBranch, FileText, TestTube2, Shield, Rocket, Calculator, Trophy, ArrowLeft } from 'lucide-react';
 import { AnalyticsScore, Repository } from '../types/gitlab';
 import { DocumentationDetails } from './DocumentationDetails';
 import { CommitDetails } from './CommitDetails';
@@ -9,7 +9,7 @@ import { OverallHealthDetails } from './OverallHealthDetails';
 import { TestDetails } from './TestDetails';
 import { DocumentFile, DocumentationAnalysis } from '../services/documentation';
 import { CalculationMethods } from './CalculationMethods';
-import { ContributorLeaderboard } from './ContributorLeaderboard';
+import { ContributorSection } from './ContributorSection';
 import { ContributorStats } from '../types/gitlab';
 
 interface DashboardProps {
@@ -22,7 +22,13 @@ interface DashboardProps {
     security: boolean;
     deployment: boolean;
   };
-  commits: Array<{
+  onBackToList: () => void;
+  documentationFiles?: Array<{
+    file: DocumentFile;
+    analysis: DocumentationAnalysis;
+    score: number;
+  }>;
+  commits?: Array<{
     id: string;
     title: string;
     message: string;
@@ -33,7 +39,7 @@ interface DashboardProps {
       problems: string[];
     };
   }>;
-  deployments: Array<{
+  deployments?: Array<{
     id: number;
     status: string;
     ref: string;
@@ -72,12 +78,7 @@ interface DashboardProps {
     type: string;
     severity: 'high' | 'medium' | 'low';
   }>;
-  documentationFiles?: Array<{
-    file: DocumentFile;
-    analysis: DocumentationAnalysis;
-    score: number;
-  }>;
-  contributors: ContributorStats[];
+  contributors?: ContributorStats[];
 }
 
 const ScoreCard: React.FC<{
@@ -111,6 +112,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   score, 
   repository, 
   loadingStates,
+  onBackToList,
   documentationFiles = [], 
   commits = [],
   testFiles = [],
@@ -133,24 +135,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Repository Health Dashboard</h1>
-        <p className="text-gray-600 mt-2">
-          Comprehensive analysis of repository health and performance metrics
-        </p>
-        <button
-          onClick={() => setShowCalculationMethods(true)}
-          className="mt-2 inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700"
-        >
-          <Calculator className="w-4 h-4 mr-1" />
-          View Calculation Methods
-        </button>
-        <button
-          onClick={() => setShowContributors(true)}
-          className="mt-2 ml-4 inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700"
-        >
-          <Trophy className="w-4 h-4 mr-1" />
-          View Contributor Leaderboard
-        </button>
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="flex items-center space-x-2 mb-2">
+              <button
+                onClick={onBackToList}
+                className="inline-flex items-center text-gray-600 hover:text-gray-900"
+              >
+                <ArrowLeft className="w-5 h-5 mr-1" />
+                Back to Repositories
+              </button>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900">{repository.name}</h1>
+            <p className="text-gray-600 mt-2">
+              Comprehensive analysis of repository health and performance metrics
+            </p>
+          </div>
+          <div>
+            <button
+              onClick={() => setShowCalculationMethods(true)}
+              className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700"
+            >
+              <Calculator className="w-4 h-4 mr-1" />
+              View Calculation Methods
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -197,7 +207,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
           onClick={() => setShowOverallHealth(true)}
         />
       </div>
-      
+
+      <ContributorSection contributors={contributors} />
+
       {showDocDetails && (
         <DocumentationDetails
           files={documentationFiles}

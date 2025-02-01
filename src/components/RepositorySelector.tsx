@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { GitLabService } from '../services/gitlab';
 import { Repository } from '../types/gitlab';
-import { Search, Loader, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Loader, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
 
 interface RepositorySelectorProps {
   gitlabService: GitLabService;
   onSelect: (repository: Repository) => void;
+  onLogout: () => void;
 }
 
 export const RepositorySelector: React.FC<RepositorySelectorProps> = ({
   gitlabService,
   onSelect,
+  onLogout,
 }) => {
   const [repositories, setRepositories] = useState<{
     items: Repository[];
@@ -55,6 +57,7 @@ export const RepositorySelector: React.FC<RepositorySelectorProps> = ({
       });
     } catch (err) {
       setError('Failed to load repositories. Please check your GitLab token and try again.');
+      localStorage.clear();
     } finally {
       setLoading(false);
     }
@@ -102,16 +105,31 @@ export const RepositorySelector: React.FC<RepositorySelectorProps> = ({
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Select Repository
-        </h2>
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-gray-500">
-            Found {repositories.totalItems} repositories
-          </p>
-          <p className="text-sm text-gray-500">
-            Sorted by recent activity
-          </p>
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Select Repository
+            </h2>
+            <div className="flex items-center space-x-4">
+              <p className="text-sm text-gray-500">
+                Found {repositories.totalItems} repositories
+              </p>
+              <p className="text-sm text-gray-500">
+                Sorted by recent activity
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              localStorage.removeItem('gitlabToken');
+              localStorage.removeItem('gitlabUrl');
+              onLogout();
+            }}
+            className="flex items-center px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </button>
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />

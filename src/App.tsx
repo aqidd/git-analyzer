@@ -48,6 +48,21 @@ function App() {
     setGitlabService(new GitLabService(config));
   };
 
+  const handleLogout = () => {
+    setGitlabService(null);
+    setSelectedRepo(null);
+    setCommits([]);
+    setTestFiles([]);
+    setTestMetrics(null);
+    setDeployments([]);
+    setDeploymentMetrics(null);
+    setSecurityIssues([]);
+    setSecurityMetrics(null);
+    setDocumentationFiles([]);
+    setContributors([]);
+    setScore(initialScore);
+  };
+
   const handleRepositorySelect = async (repository: Repository) => {
     setSelectedRepo(repository);
     if (gitlabService) {
@@ -211,6 +226,10 @@ function App() {
     }
   };
 
+  const handleBackToList = () => {
+    setSelectedRepo(null);
+  };
+
   const getCommitProblems = (commit: any): string[] => {
     const problems = [];
 
@@ -251,50 +270,35 @@ function App() {
     );
   }
 
-  if (!selectedRepo) {
-    return (
-      <div className="min-h-screen bg-gray-100">
-        <RepositorySelector
-          gitlabService={gitlabService}
-          onSelect={handleRepositorySelect}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {selectedRepo.name}
-              </h2>
-            </div>
-            <button
-              onClick={() => setSelectedRepo(null)}
-              className="text-sm text-gray-600 hover:text-gray-900"
-            >
-              Change Repository
-            </button>
-          </div>
-        </div>
-      </div>
-      <Dashboard
-        score={score}
-        repository={selectedRepo}
-        loadingStates={loadingStates}
-        commits={commits}
-        documentationFiles={documentationFiles}
-        deployments={deployments}
-        deploymentMetrics={deploymentMetrics}
-        testFiles={testFiles}
-        testMetrics={testMetrics}
-        contributors={contributors}
-        securityMetrics={securityMetrics}
-        securityIssues={securityIssues}
-      />
+      {!gitlabService && (
+        <GitLabLogin onLogin={handleLogin} />
+      )}
+      {gitlabService && !selectedRepo && (
+        <RepositorySelector 
+          gitlabService={gitlabService} 
+          onSelect={handleRepositorySelect}
+          onLogout={handleLogout}
+        />
+      )}
+      {selectedRepo && (
+        <Dashboard
+          score={score}
+          repository={selectedRepo}
+          loadingStates={loadingStates}
+          documentationFiles={documentationFiles}
+          commits={commits}
+          testFiles={testFiles}
+          testMetrics={testMetrics}
+          deployments={deployments}
+          deploymentMetrics={deploymentMetrics}
+          securityMetrics={securityMetrics}
+          securityIssues={securityIssues}
+          contributors={contributors}
+          onBackToList={handleBackToList}
+        />
+      )}
     </div>
   );
 }

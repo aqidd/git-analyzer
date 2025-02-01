@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Key } from 'lucide-react';
 
 interface GitLabLoginProps {
@@ -10,6 +10,15 @@ export const GitLabLogin: React.FC<GitLabLoginProps> = ({ onLogin }) => {
   const [baseUrl, setBaseUrl] = useState('https://gitlab.com');
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    const storedToken = localStorage.getItem('gitlabToken');
+    const storedUrl = localStorage.getItem('gitlabUrl');
+    
+    if (storedToken && storedUrl) {
+      onLogin({ apiToken: storedToken, baseUrl: storedUrl });
+    }
+  }, [onLogin]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -19,6 +28,8 @@ export const GitLabLogin: React.FC<GitLabLoginProps> = ({ onLogin }) => {
       return;
     }
 
+    localStorage.setItem('gitlabToken', apiToken);
+    localStorage.setItem('gitlabUrl', baseUrl);
     onLogin({ apiToken, baseUrl });
   };
 
