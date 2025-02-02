@@ -73,11 +73,11 @@ export interface Contributor {
 }
 
 export interface ContributorStats {
-  id: number;
+  id?: number;
   name: string;
   email: string;
-  avatarUrl: string;
-  commitCount: number;
+  avatarUrl?: string;
+  commits: number;
   mergeRequestCount: number;
   additions: number;
   deletions: number;

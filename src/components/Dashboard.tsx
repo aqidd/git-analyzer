@@ -24,7 +24,7 @@ interface DashboardProps {
     deployment: boolean;
     contributors: boolean;
   };
-  onBackToList: () => void;
+  onBack: () => void;
   documentationFiles?: Array<{
     file: DocumentFile;
     analysis: DocumentationAnalysis;
@@ -80,7 +80,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   score, 
   repository, 
   loadingStates,
-  onBackToList,
+  onBack,
   documentationFiles = [], 
   commits = [],
   testFiles = [],
@@ -110,7 +110,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const handleBackClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    onBackToList();
+    onBack();
   };
 
   return (
@@ -154,7 +154,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <h3 className="text-sm font-medium text-red-800">Error</h3>
                 <p className="text-sm text-red-700 mt-1">{error}</p>
                 <button
-                  onClick={onBackToList}
+                  onClick={onBack}
                   className="mt-2 text-sm font-medium text-red-600 hover:text-red-500"
                 >
                   Return to Repository List

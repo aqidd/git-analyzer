@@ -68,7 +68,7 @@ const ContributorCard: React.FC<{
           <GitPullRequest className="w-4 h-4 text-gray-400" />
           <div>
             <div className="text-sm font-medium text-gray-900">
-              {formatNumber(contributor.merge_requests)}
+              {formatNumber(contributor.mergeRequestCount)}
             </div>
             <div className="text-xs text-gray-500">merge requests</div>
           </div>
@@ -77,7 +77,7 @@ const ContributorCard: React.FC<{
           <FileCode className="w-4 h-4 text-gray-400" />
           <div>
             <div className="text-sm font-medium text-gray-900">
-              {formatNumber(contributor.total_changes)}
+              {formatNumber(contributor.totalChanges)}
             </div>
             <div className="text-xs text-gray-500">lines changed</div>
           </div>

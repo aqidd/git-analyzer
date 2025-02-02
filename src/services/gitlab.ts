@@ -269,20 +269,20 @@ export class GitLabService {
     for (const commit of commits) {
       const key = commit.author_email || commit.author_name;
       const stats = contributorStats.get(key) || {
-        author_name: commit.author_name,
-        author_email: commit.author_email,
+        name: commit.author_name,
+        email: commit.author_email,
         commits: 0,
         additions: 0,
         deletions: 0,
-        total_changes: 0,
-        merge_requests: 0,
+        totalChanges: 0,
+        mergeRequestCount: 0,
         score: 0,
       };
       
       stats.commits++;
       stats.additions += commit.stats.additions;
       stats.deletions += commit.stats.deletions;
-      stats.total_changes += commit.stats.total;
+      stats.totalChanges += commit.stats.total;
       contributorStats.set(key, stats);
     }
     
@@ -291,17 +291,17 @@ export class GitLabService {
       if (mr.state === 'merged') {
         const key = mr.author.email || mr.author.name;
         const stats = contributorStats.get(key) || {
-          author_name: mr.author.name,
-          author_email: mr.author.email,
+          name: mr.author.name,
+          email: mr.author.email || '',
           commits: 0,
           additions: 0,
           deletions: 0,
-          total_changes: 0,
-          merge_requests: 0,
+          totalChanges: 0,
+          mergeRequestCount: 0,
           score: 0,
         };
         
-        stats.merge_requests++;
+        stats.mergeRequestCount++;
         contributorStats.set(key, stats);
       }
     }
@@ -318,8 +318,8 @@ export class GitLabService {
 
   private calculateContributorScore(stats: ContributorStats): number {
     const commitScore = Math.min(stats.commits * 10, 100);
-    const mrScore = Math.min(stats.merge_requests * 20, 100);
-    const changeScore = Math.min(stats.total_changes / 1000, 100);
+    const mrScore = Math.min(stats.mergeRequestCount * 20, 100);
+    const changeScore = Math.min(stats.totalChanges / 1000, 100);
     
     return Math.round((commitScore + mrScore + changeScore) / 3);
   }
