@@ -1,0 +1,42 @@
+export interface TimeFilter {
+  startDate: string
+  endDate: string
+}
+
+export interface Commit {
+  id: string
+  message: string
+  author_name: string
+  author_email: string
+  created_at: string
+  web_url?: string
+  html_url?: string
+}
+
+export interface Pipeline {
+  id: number
+  status: string
+  ref: string
+  sha: string
+  web_url?: string
+  html_url?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Contributor {
+  id: number
+  name: string
+  email: string
+  commits: number
+  additions: number
+  deletions: number
+  avatar_url?: string
+}
+
+export interface RepositoryFile {
+  path: string
+  type: string
+  size: number
+  last_modified: string
+}

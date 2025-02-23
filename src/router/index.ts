@@ -3,6 +3,7 @@ import { useGitlabStore } from '@/stores/gitlab'
 import { useGithubStore } from '@/stores/github'
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
+import RepositoryView from '../views/RepositoryView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -17,6 +18,13 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView
+    },
+    {
+      path: '/repository/:type/:id',
+      name: 'repository',
+      component: RepositoryView,
+      meta: { requiresAuth: true },
+      props: true
     }
   ]
 })

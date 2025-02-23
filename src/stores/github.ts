@@ -75,6 +75,7 @@ export const useGithubStore = defineStore('github', () => {
     error,
     login,
     logout,
-    fetchRepositories
+    fetchRepositories,
+    service: githubService
   }
 })

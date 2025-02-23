@@ -71,17 +71,31 @@
                   {{ getRepoStarCount(repo) }}
                 </div>
               </div>
-              <a
-                :href="getRepoUrl(repo)"
-                target="_blank"
-                rel="noopener noreferrer"
-                :class="[
-                  'inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white rounded-lg focus:ring-4 focus:outline-none',
-                  isGitLabRepo(repo) ? 'bg-[#FC6D26] hover:bg-[#E24329] focus:ring-[#FC6D26]/50' : 'bg-[#2DA44E] hover:bg-[#2C974B] focus:ring-[#2DA44E]/50'
-                ]"
-              >
-                View
-              </a>
+              <div class="flex items-center space-x-2">
+                <a
+                  :href="getRepoUrl(repo)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  :class="[
+                    'inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white rounded-lg focus:ring-4 focus:outline-none',
+                    isGitLabRepo(repo) ? 'bg-[#FC6D26] hover:bg-[#E24329] focus:ring-[#FC6D26]/50' : 'bg-[#2DA44E] hover:bg-[#2C974B] focus:ring-[#2DA44E]/50'
+                  ]"
+                >
+                  View
+                </a>
+                <router-link
+                  :to="{
+                    name: 'repository',
+                    params: {
+                      type: isGitLabRepo(repo) ? 'gitlab' : 'github',
+                      id: isGitLabRepo(repo) ? repo.id : `${repo.owner.login}/${repo.name}`
+                    }
+                  }"
+                  class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-indigo-600 bg-white border border-indigo-600 rounded-lg hover:bg-indigo-50 focus:ring-4 focus:outline-none focus:ring-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-400 dark:hover:bg-gray-700"
+                >
+                  Analytics
+                </router-link>
+              </div>
             </div>
           </div>
         </div>

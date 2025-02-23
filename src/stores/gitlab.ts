@@ -81,6 +81,7 @@ export const useGitlabStore = defineStore('gitlab', () => {
     error,
     login,
     logout,
-    fetchRepositories
+    fetchRepositories,
+    service: gitlabService
   }
 })
