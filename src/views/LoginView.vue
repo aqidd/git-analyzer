@@ -30,10 +30,13 @@
 import { ref } from 'vue'
 import GitLabLogin from '@/components/GitLabLogin.vue'
 import GitHubLogin from '@/components/GitHubLogin.vue'
+import AzureLogin from '@/components/AzureLogin.vue'
 
 const tabs = [
   { name: GitLabLogin, label: 'GitLab' },
   { name: GitHubLogin, label: 'GitHub' },
+  // TODO: enable this after find out why commits returned error
+  // { name: AzureLogin, label: 'Azure DevOps' },
 ]
 
 const activeTab = ref(GitLabLogin)

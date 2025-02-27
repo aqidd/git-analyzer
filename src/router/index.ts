@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useGitlabStore } from '@/stores/gitlab'
 import { useGithubStore } from '@/stores/github'
+import { useAzureStore } from '@/stores/azure'
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 import RepositoryView from '../views/RepositoryView.vue'
@@ -32,8 +33,9 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const gitlabStore = useGitlabStore()
   const githubStore = useGithubStore()
+  const azureStore = useAzureStore()
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-  const isAuthenticated = gitlabStore.auth.isAuthenticated || githubStore.auth.isAuthenticated
+  const isAuthenticated = gitlabStore.auth.isAuthenticated || githubStore.auth.isAuthenticated || azureStore.auth.isAuthenticated
 
   if (requiresAuth && !isAuthenticated) {
     next('/login')

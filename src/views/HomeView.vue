@@ -18,6 +18,13 @@
           >
             Logout GitHub
           </button>
+          <button
+            v-if="azureStore.auth.isAuthenticated"
+            @click="azureStore.logout()"
+            class="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg text-white bg-[#0078D4] hover:bg-[#106EBE] focus:ring-4 focus:ring-[#0078D4]/50"
+          >
+            Logout Azure
+          </button>
         </div>
       </div>
 
@@ -78,7 +85,9 @@
                   rel="noopener noreferrer"
                   :class="[
                     'inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white rounded-lg focus:ring-4 focus:outline-none',
-                    isGitLabRepo(repo) ? 'bg-[#FC6D26] hover:bg-[#E24329] focus:ring-[#FC6D26]/50' : 'bg-[#2DA44E] hover:bg-[#2C974B] focus:ring-[#2DA44E]/50'
+                    isGitLabRepo(repo) ? 'bg-[#FC6D26] hover:bg-[#E24329] focus:ring-[#FC6D26]/50' : 
+                    isAzureRepo(repo) ? 'bg-[#0078D4] hover:bg-[#106EBE] focus:ring-[#0078D4]/50' : 
+                    'bg-[#2DA44E] hover:bg-[#2C974B] focus:ring-[#2DA44E]/50'
                   ]"
                 >
                   View
@@ -87,8 +96,8 @@
                   :to="{
                     name: 'repository',
                     params: {
-                      type: isGitLabRepo(repo) ? 'gitlab' : 'github',
-                      id: isGitLabRepo(repo) ? repo.id : `${repo.owner.login}/${repo.name}`
+                      type: isGitLabRepo(repo) ? 'gitlab' : isAzureRepo(repo) ? 'azure' : 'github',
+                      id: getRepositoryId(repo)
                     }
                   }"
                   class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-indigo-600 bg-white border border-indigo-600 rounded-lg hover:bg-indigo-50 focus:ring-4 focus:outline-none focus:ring-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-400 dark:hover:bg-gray-700"
@@ -109,46 +118,69 @@ import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGitlabStore } from '@/stores/gitlab'
 import { useGithubStore } from '@/stores/github'
+import { useAzureStore } from '@/stores/azure'
 import type { Repository as GitLabRepository } from '@/types/gitlab'
 import type { Repository as GitHubRepository } from '@/types/github'
+import type { Repository as AzureRepository } from '@/types/azure'
 
 const router = useRouter()
 const gitlabStore = useGitlabStore()
 const githubStore = useGithubStore()
+const azureStore = useAzureStore()
 
-const loading = computed(() => gitlabStore.loading || githubStore.loading)
-const error = computed(() => gitlabStore.error || githubStore.error)
+const loading = computed(() => gitlabStore.loading || githubStore.loading || azureStore.loading)
+const error = computed(() => gitlabStore.error || githubStore.error || azureStore.error)
 
 const repositories = computed(() => {
-  const allRepos = [...gitlabStore.repositories, ...githubStore.repositories]
+  const allRepos = [...gitlabStore.repositories, ...githubStore.repositories, ...azureStore.repositories]
   return allRepos.sort((a, b) => {
-    const dateA = new Date(a.last_activity_at || a.updated_at)
-    const dateB = new Date(b.last_activity_at || b.updated_at)
+    const dateA = new Date(a.last_activity_at || a.updated_at || a.lastCommitDate)
+    const dateB = new Date(b.last_activity_at || b.updated_at || b.lastCommitDate)
     return dateB.getTime() - dateA.getTime()
   })
 })
 
-function isGitLabRepo(repo: GitLabRepository | GitHubRepository): repo is GitLabRepository {
+type AllRepository = GitLabRepository | GitHubRepository | AzureRepository
+
+function isGitLabRepo(repo: AllRepository): repo is GitLabRepository {
   return 'web_url' in repo
 }
 
-function getRepoUrl(repo: GitLabRepository | GitHubRepository): string {
-  return isGitLabRepo(repo) ? repo.web_url : repo.html_url
+function isAzureRepo(repo: AllRepository): repo is AzureRepository {
+  return 'visibility' in repo && !('star_count' in repo) && !('owner' in repo)
 }
 
-function getRepoAvatarUrl(repo: GitLabRepository | GitHubRepository): string {
+function getRepoUrl(repo: AllRepository): string {
+  if (isGitLabRepo(repo)) return repo.web_url
+  if (isAzureRepo(repo)) return repo.url
+  return repo.html_url
+}
+
+function getRepoAvatarUrl(repo: AllRepository): string {
   if (isGitLabRepo(repo)) {
     return repo.avatar_url || 'https://www.gravatar.com/avatar/?s=80&d=identicon'
   }
-  return repo.owner.avatar_url
+  if (isAzureRepo(repo)) {
+    return 'https://www.svgrepo.com/show/448307/azure-devops.svg'
+  }
+  return repo.owner?.avatar_url || 'https://www.gravatar.com/avatar/?s=80&d=identicon'
 }
 
-function getRepoStarCount(repo: GitLabRepository | GitHubRepository): number {
-  return isGitLabRepo(repo) ? repo.star_count : repo.stargazers_count
+function getRepositoryId(repo: AllRepository): string | number {
+  if (isGitLabRepo(repo)) return repo.id
+  if (isAzureRepo(repo)) return repo.id
+  return `${repo.owner?.login}/${repo.name}`
+}
+
+function getRepoStarCount(repo: AllRepository): number {
+  if (isGitLabRepo(repo)) return repo.star_count
+  if (isAzureRepo(repo)) return 0
+  return repo.stargazers_count
 }
 
 onMounted(() => {
-  if (!gitlabStore.auth.isAuthenticated && !githubStore.auth.isAuthenticated) {
+  console.log('home mounted')
+  if (!gitlabStore.auth.isAuthenticated && !githubStore.auth.isAuthenticated && !azureStore.auth.isAuthenticated) {
     router.push('/login')
     return
   }
@@ -159,6 +191,10 @@ onMounted(() => {
   
   if (githubStore.auth.isAuthenticated) {
     githubStore.fetchRepositories()
+  }
+
+  if (azureStore.auth.isAuthenticated) {
+    azureStore.fetchRepositories()
   }
 })
 </script>

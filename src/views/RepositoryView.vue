@@ -144,12 +144,18 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useGitlabStore } from '@/stores/gitlab'
 import { useGithubStore } from '@/stores/github'
+import { useAzureStore } from '@/stores/azure'
 import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile } from '@/types/repository'
-import type { Repository } from '@/types/gitlab'
+import type { Repository as GitLabRepository } from '@/types/gitlab'
+import type { Repository as GitHubRepository } from '@/types/github'
+import type { Repository as AzureRepository } from '@/types/azure'
+
+type Repository = GitLabRepository | GitHubRepository | AzureRepository
 
 const route = useRoute()
 const gitlabStore = useGitlabStore()
 const githubStore = useGithubStore()
+const azureStore = useAzureStore()
 
 const repository = ref<Repository | null>(null)
 const commits = ref<Commit[]>([])
@@ -179,26 +185,39 @@ const loadData = async () => {
   loading.value = true
 
   try {
-    const service = type === 'gitlab' ? gitlabStore.service : githubStore.service
-    if (!service) {
-      throw new Error(`${type} service not initialized. Please log in again.`)
-    }
-
     if (type === 'gitlab') {
+      if (!gitlabStore.service) {
+        throw new Error('GitLab service not initialized. Please log in again.')
+      }
       const projectId = Number(id)
-      commits.value = await service.getCommits(projectId, timeFilter.value)
-      pipelines.value = await service.getPipelines(projectId, timeFilter.value)
-      contributors.value = await service.getContributors(projectId, timeFilter.value)
-      files.value = await service.getFiles(projectId)
-    } else {
+      commits.value = await gitlabStore.service.getCommits(projectId, timeFilter.value)
+      pipelines.value = await gitlabStore.service.getPipelines(projectId, timeFilter.value)
+      contributors.value = await gitlabStore.service.getContributors(projectId, timeFilter.value)
+      files.value = await gitlabStore.service.getFiles(projectId)
+    } else if (type === 'github') {
+      if (!githubStore.service) {
+        throw new Error('GitHub service not initialized. Please log in again.')
+      }
       const [owner, repo] = (id as string).split('/')
       if (!owner || !repo) {
         throw new Error('Invalid repository identifier')
       }
-      commits.value = await service.getCommits(owner, repo, timeFilter.value)
-      pipelines.value = await service.getPipelines(owner, repo, timeFilter.value)
-      contributors.value = await service.getContributors(owner, repo, timeFilter.value)
-      files.value = await service.getFiles(owner, repo)
+      commits.value = await githubStore.service.getCommits(owner, repo, timeFilter.value)
+      pipelines.value = await githubStore.service.getPipelines(owner, repo, timeFilter.value)
+      contributors.value = await githubStore.service.getContributors(owner, repo, timeFilter.value)
+      files.value = await githubStore.service.getFiles(owner, repo)
+    } else if (type === 'azure') {
+      if (!azureStore.auth.isAuthenticated) {
+        throw new Error('Azure DevOps service not initialized. Please log in again.')
+      }
+      repository.value = azureStore.repositories.find(repo => repo.id === id) || null
+      if (!repository.value) {
+        throw new Error('Repository not found')
+      }
+      commits.value = await azureStore.service.getCommits(id, timeFilter.value)
+      pipelines.value = await azureStore.service.getPipelines(id, timeFilter.value)
+      contributors.value = await azureStore.service.getContributors(id, timeFilter.value)
+      files.value = await azureStore.service.getFiles(id)
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load repository data'
