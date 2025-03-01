@@ -3,6 +3,7 @@
   - Added health metrics section with popup descriptions
   - Combined all details into paginated tabs
   - Improved code organization and readability
+  - Added reusable HealthMetricCard component
 -->
 <template>
   <div class="min-h-screen bg-gray-50 py-8 dark:bg-gray-900">
@@ -59,26 +60,13 @@
           <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <!-- Row 1 Commit Stats -->
             <!-- 1. Code Activity Score -->
-            <div class="mb-6">
-              <div
-                class="flex flex-col gap-1 rounded-lg border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-500 dark:text-gray-400">Code Activity</span>
-                  <span :class="[
-                    'rounded-full px-2 py-0.5 text-xs font-medium',
-                    commitStats.dailyCommitRate >= 1 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200'
-                  ]">
-                    {{ commitStats.dailyCommitRate >= 1 ? 'Active' : 'Low Activity' }}
-                  </span>
-                </div>
-                <div class="mt-2">
-                  <div class="text-2xl font-bold text-gray-900 dark:text-white">{{
-                    commitStats.dailyCommitRate.toFixed(1)
-                    }}</div>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">commits/day</p>
-                </div>
-              </div>
-            </div>
+            <HealthMetricCard
+              title="Code Activity"
+              :status="commitStats.dailyCommitRate >= 1 ? 'Active' : 'Low Activity'"
+              :value="commitStats.dailyCommitRate.toFixed(1)"
+              unit="commits/day"
+              :isHealthy="commitStats.dailyCommitRate >= 1"
+            />
             <!-- 2. Number of detailed commit -->
             <div class="mb-6">
               <div class="rounded-lg bg-purple-50 p-4 dark:bg-purple-900">
@@ -87,169 +75,92 @@
                   commitStats.commitWithLongDescription }}</p>
               </div>
             </div>
-            <!-- 3. Code churn (growing/shrinking) -->
-            <div class="mb-6" :class="[codeRatioColor]">
-              <div class="rounded-lg p-4" :class="[codeRatioColor]">
-                <p :class="[codeRatioTextColor]">Code Add:Remove Ratio</p>
-                <div class="flex items-center gap-2">
-                  <p :class="[`text-2xl font-bold`, codeRatioValueColor]">
-                    {{ commitStats.addRemoveRatio === Infinity ? '∞' : commitStats.addRemoveRatio.toFixed(1) }}
-                  </p>
-                  <span :class="[codeRatioTextColor]">
-                    {{ codeRatioTrend }}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <!-- 3. Code Churn -->
+            <HealthMetricCard
+              title="Code Growth"
+              :status="codeRatioTrend"
+              :value="commitStats.addRemoveRatio === Infinity ? '∞' : commitStats.addRemoveRatio.toFixed(1)"
+              unit="ratio"
+              :isHealthy="commitStats.addRemoveRatio >= 0.5 && commitStats.addRemoveRatio <= 2"
+            />
             <div class="mb-6"></div>
 
             <!-- Row 2 Pipeline Stats -->
-            <div class="mb-6">
-              <div class="rounded-lg bg-green-50 p-4 dark:bg-green-900">
-                <p class="text-sm text-green-600 dark:text-green-200">Successful Pipeline</p>
-                <p class="text-2xl font-bold text-green-700 dark:text-green-100">{{ pipelineStats.successfulPipelines }}
-                </p>
-              </div>
-            </div>
-            <div class="mb-6">
-              <div class="rounded-lg bg-red-50 p-4 dark:bg-red-900">
-                <p class="text-sm text-red-600 dark:text-red-200">Failed Pipeline</p>
-                <p class="text-2xl font-bold text-red-700 dark:text-red-100">{{ pipelineStats.failedPipelines }}</p>
-              </div>
-            </div>
-            <div class="mb-6">
-              <div class="rounded-lg bg-blue-50 p-4 dark:bg-blue-900">
-                <p class="text-sm text-blue-600 dark:text-blue-200">Success Rate</p>
-                <p class="text-2xl font-bold text-blue-700 dark:text-blue-100">{{ pipelineStats.successRate.toFixed(1)
-                  }}%
-                </p>
-              </div>
-            </div>
+            <HealthMetricCard
+              title="Successful Pipelines"
+              :status="pipelineStats.successfulPipelines > 0 ? 'Good' : 'No Pipelines'"
+              :value="pipelineStats.successfulPipelines"
+              unit="pipelines"
+              :isHealthy="pipelineStats.successfulPipelines > 0"
+            />
+            <HealthMetricCard
+              title="Failed Pipelines"
+              :status="pipelineStats.failedPipelines === 0 ? 'Perfect' : 'Has Failures'"
+              :value="pipelineStats.failedPipelines"
+              unit="pipelines"
+              :isHealthy="pipelineStats.failedPipelines === 0"
+            />
+            <HealthMetricCard
+              title="Pipeline Success Rate"
+              :status="pipelineStats.successRate >= 80 ? 'Good' : 'Needs Improvement'"
+              :value="pipelineStats.successRate.toFixed(1)"
+              unit="%"
+              :isHealthy="pipelineStats.successRate >= 80"
+            />
             <!-- Pipeline Health Score -->
-            <div class="mb-6">
-              <div
-                class="flex flex-col gap-1 rounded-lg border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-500 dark:text-gray-400">Pipeline Health</span>
-                  <span :class="[
-                    'rounded-full px-2 py-0.5 text-xs font-medium',
-                    pipelineStats.successRate >= 80 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200'
-                  ]">
-                    {{ pipelineStats.successRate.toFixed(0) }}% Success
-                  </span>
-                </div>
-                <div class="mt-2">
-                  <div class="text-2xl font-bold text-gray-900 dark:text-white">{{
-                    pipelineStats.deploymentFrequency.toFixed(1) }}</div>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">deployments/day</p>
-                </div>
-              </div>
-            </div>
+            <HealthMetricCard
+              title="Pipeline Health"
+              :status="`${pipelineStats.successRate.toFixed(0)}% Success`"
+              :value="pipelineStats.deploymentFrequency.toFixed(1)"
+              unit="deployments/day"
+              :isHealthy="pipelineStats.successRate >= 80"
+            />
 
             <!-- Contributor Stats -->
-            <div class="mb-6">
-              <div class="rounded-lg bg-amber-50 p-4 dark:bg-amber-900">
-                <div class="flex items-center justify-between">
-                  <p class="text-sm text-amber-600 dark:text-amber-200">Bus Factor</p>
-                  <span :class="[
-                    'px-2 py-1 text-xs rounded-full',
-                    contributorStats.busFactor > 2 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                      'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                  ]">
-                    {{ contributorStats.busFactor > 2 ? 'Healthy' : 'At Risk' }}
-                  </span>
-                </div>
-                <p class="text-2xl font-bold text-amber-700 dark:text-amber-100">{{ contributorStats.busFactor }}</p>
-              </div>
-            </div>
-            <div class="mb-6">
-              <div class="rounded-lg bg-orange-50 p-4 dark:bg-orange-900">
-                <div class="flex items-center justify-between">
-                  <p class="text-sm text-orange-600 dark:text-orange-200">Top Contributor</p>
-                  <span :class="[
-                    'px-2 py-1 text-xs rounded-full',
-                    contributorStats.giniCoefficient < 0.4 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                  ]">
-                    {{ contributorStats.giniCoefficient < 0.4 ? 'Balanced' : 'Concentrated' }}
-                  </span>
-                </div>
-                <p class="text-lg font-bold text-orange-700 dark:text-orange-100 truncate">{{
-                  contributorStats.topContributor }}</p>
-                <p class="text-sm text-orange-600 dark:text-orange-200">{{
-                  contributorStats.topContributorPercentage.toFixed(1) }}% of commits</p>
-              </div>
-            </div>
-            <!-- Team Health Score -->
-            <div class="mb-6">
-              <div
-                class="flex flex-col gap-1 rounded-lg border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-500 dark:text-gray-400">Team Health</span>
-                  <span :class="[
-                    'rounded-full px-2 py-0.5 text-xs font-medium',
-                    contributorStats.giniCoefficient < 0.4 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200'
-                  ]">
-                    {{ contributorStats.giniCoefficient < 0.4 ? 'Balanced' : 'Concentrated' }} </span>
-                </div>
-                <div class="mt-2">
-                  <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ contributorStats.busFactor }}</div>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">bus factor</p>
-                </div>
-              </div>
-            </div>
+            <HealthMetricCard
+              title="Bus Factor"
+              :status="contributorStats.busFactor > 2 ? 'Healthy' : 'At Risk'"
+              :value="contributorStats.busFactor"
+              unit="contributors"
+              :isHealthy="contributorStats.busFactor > 2"
+            />
+            <HealthMetricCard
+              title="Top Contributor"
+              :status="contributorStats.commitDistribution"
+              :value="contributorStats.topContributor"
+              :unit="`${contributorStats.topContributorPercentage}% of Commits`"
+              :isHealthy="contributorStats.giniCoefficient < 0.4"
+            />
+            <div class="mb-6"></div>
             <div class="mb-6"></div>
 
             <!-- Branch Stats -->
-            <div class="mb-6">
-              <div class="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-900">
-                <div class="flex items-center justify-between">
-                  <p class="text-sm text-emerald-600 dark:text-emerald-200">Branch Health</p>
-                  <span :class="[
-                    'px-2 py-1 text-xs rounded-full',
-                    branchStats?.healthyBranchCount / branchStats?.totalBranches > 0.7 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                      'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                  ]">
-                    {{ branchStats?.branchHealth }}
-                  </span>
-                </div>
-                <p class="text-2xl font-bold text-emerald-700 dark:text-emerald-100">{{ branchStats?.healthyBranchCount
-                  }}
-                  / {{ branchStats?.totalBranches }}</p>
-                <p class="text-sm text-emerald-600 dark:text-emerald-200">Healthy Branches</p>
-              </div>
-            </div>
-            <div class="mb-6">
-              <div class="rounded-lg bg-rose-50 p-4 dark:bg-rose-900">
-                <p class="text-sm text-rose-600 dark:text-rose-200">Stagnant Branches</p>
-                <p class="text-2xl font-bold text-rose-700 dark:text-rose-100">{{ branchStats?.stagnantBranchCount }}
-                </p>
-                <p class="text-sm text-rose-600 dark:text-rose-200">Inactive >30 days</p>
-              </div>
-            </div>
+            <HealthMetricCard
+              title="Branch Health"
+              :status="branchStats?.branchHealth"
+              :value="`${branchStats?.healthyBranchCount} / ${branchStats?.totalBranches}`"
+              unit="healthy branches"
+              :isHealthy="(branchStats?.healthyBranchCount / branchStats?.totalBranches) > 0.7"
+            />
+            
+            <HealthMetricCard
+              title="Stagnant Branches"
+              :status="(branchStats?.stagnantBranchCount / branches.length) <= 0.3 ? 'Healthy' : 'Needs Cleanup'"
+              :value="branchStats?.stagnantBranchCount || 0"
+              unit="Inactive >30 days"
+              :isHealthy="(branchStats?.stagnantBranchCount / branches.length) <= 0.3"
+            />
 
             <!-- Branch Health Score -->
-            <div class="mb-6">
-              <div
-                class="flex flex-col gap-1 rounded-lg border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-500 dark:text-gray-400">Branch Health</span>
-                  <span :class="[
-                    'rounded-full px-2 py-0.5 text-xs font-medium',
-                    (branchStats?.stagnantBranchCount / branches.length) <= 0.3 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200'
-                  ]">
-                    {{ (branchStats?.stagnantBranchCount / branches.length) <= 0.3 ? 'Healthy' : 'Needs Cleanup' }}
-                      </span>
-                </div>
-                <div class="mt-2">
-                  <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ branchStats?.stagnantBranchCount || 0
-                    }}</div>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">stagnant branches</p>
-                </div>
-              </div>
-            </div>            
+            <HealthMetricCard
+              title="Branch Health"
+              :status="(branchStats?.stagnantBranchCount / branches.length) <= 0.3 ? 'Healthy' : 'Needs Cleanup'"
+              :value="branchStats?.stagnantBranchCount || 0"
+              unit="stagnant branches"
+              :isHealthy="(branchStats?.stagnantBranchCount / branches.length) <= 0.3"
+            />            
 
-            <!-- Stagnant Branches -->
+            <!-- Stagnant Branches List -->
             <div v-if="branchStats?.stagnantBranches.length" class="mb-6 col-span-full">
               <h3 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Stagnant Branches</h3>
               <div class="space-y-2">
@@ -333,7 +244,10 @@ import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } fro
 import { useGitlabStore } from '@/stores/gitlab'
 import { useGithubStore } from '@/stores/github'
 import { useAzureStore } from '@/stores/azure'
+import { storeToRefs } from 'pinia'
 import { Analyzer } from '@/services/analyzer'
+import { useToast } from '@/composables/useToast'
+import HealthMetricCard from '@/components/HealthMetricCard.vue'
 import PaginatedDetails from '@/components/PaginatedDetails.vue'
 import HealthMetricsDialog from '@/components/HealthMetricsDialog.vue'
 import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, Branch } from '@/types/repository'
