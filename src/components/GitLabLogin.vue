@@ -111,6 +111,13 @@ const handleLogin = async () => {
   error.value = ''
   
   try {
+    if (rememberMe.value) {
+      localStorage.setItem('gitlab_url', url.value)
+      localStorage.setItem('gitlab_token', token.value)
+    } else {
+      localStorage.removeItem('gitlab_url')
+      localStorage.removeItem('gitlab_token')
+    }
     await gitlabStore.login(url.value, token.value)
     if (gitlabStore.auth.isAuthenticated) {
       router.push('/')
@@ -120,5 +127,14 @@ const handleLogin = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const savedUrl = localStorage.getItem('gitlab_url')
+const savedToken = localStorage.getItem('gitlab_token')
+
+if (savedUrl && savedToken) {
+  url.value = savedUrl
+  token.value = savedToken
+  rememberMe.value = true
 }
 </script>

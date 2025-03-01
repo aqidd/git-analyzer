@@ -1,8 +1,9 @@
 import type { Repository } from '@/types/azure'
 import type { Commit, Pipeline, Contributor, RepositoryFile, TimeFilter } from '@/types/repository'
+import { GitService } from './git'
 
-export class AzureService {
-  private token: string = ''
+export class AzureService extends GitService {
+  token: string = ''
   private organization: string = ''
   private baseUrl: string = 'https://dev.azure.com'
   private apiVersion: string = '7.1'
@@ -95,6 +96,7 @@ export class AzureService {
       includeLinks: false,
       includePushData: true,
       includeWorkItems: false,
+      includeStatistics: true,
       itemVersion: {
         version: repo.defaultBranch,
         versionType: 'branch'
@@ -104,11 +106,12 @@ export class AzureService {
     return data.value.map(commit => ({
       id: commit.commitId,
       message: commit.comment,
-      author: commit.author.name,
-      date: commit.author.date,
-      additions: commit.changeCounts?.Add || 0,
-      deletions: commit.changeCounts?.Delete || 0,
-      total: commit.changeCounts?.Edit || 0
+      author_name: commit.author.name,
+      author_email: commit.author.email,
+      created_at: commit.author.date,
+      web_url: commit.remoteUrl,
+      code_added: commit.changeCounts?.Add || 0,
+      code_removed: commit.changeCounts?.Delete || 0
     }))
   }
 

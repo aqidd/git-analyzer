@@ -9,6 +9,8 @@ export interface Commit {
   author_name: string
   author_email: string
   created_at: string
+  code_added: number
+  code_removed: number
   web_url?: string
   html_url?: string
 }
@@ -18,6 +20,7 @@ export interface Pipeline {
   status: string
   ref: string
   sha: string
+  conclusion?: string
   web_url?: string
   html_url?: string
   created_at: string

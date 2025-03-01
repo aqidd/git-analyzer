@@ -44,6 +44,29 @@
         <!-- Commits Section -->
         <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
           <h2 class="mb-4 text-xl font-semibold text-gray-900 dark:text-white">Commits</h2>
+          
+          <!-- Commit Stats -->
+          <div class="mb-6 grid grid-cols-3 gap-4">
+            <div class="rounded-lg bg-indigo-50 p-4 dark:bg-indigo-900">
+              <p class="text-sm text-indigo-600 dark:text-indigo-200">Daily Commit Rate</p>
+              <p class="text-2xl font-bold text-indigo-700 dark:text-indigo-100">{{ commitStats.dailyCommitRate.toFixed(1) }}</p>
+            </div>
+            <div class="rounded-lg bg-purple-50 p-4 dark:bg-purple-900">
+              <p class="text-sm text-purple-600 dark:text-purple-200">Detailed Commits</p>
+              <p class="text-2xl font-bold text-purple-700 dark:text-purple-100">{{ commitStats.commitWithLongDescription }}</p>
+            </div>
+            <div :class="[codeRatioColor]">
+              <p :class="[codeRatioTextColor]">Code Add:Remove Ratio</p>
+              <div class="flex items-center gap-2">
+                <p :class="[`text-2xl font-bold`, codeRatioValueColor]">
+                  {{ commitStats.addRemoveRatio === Infinity ? '∞' : commitStats.addRemoveRatio.toFixed(1) }}
+                </p>
+                <span :class="[codeRatioTextColor]">
+                  {{ codeRatioTrend }}
+                </span>
+              </div>
+            </div>
+          </div>
           <div class="space-y-4">
             <div v-for="commit in commits" :key="commit.id" class="border-b pb-4 last:border-0">
               <div class="flex items-start justify-between">
@@ -68,6 +91,26 @@
         <!-- Pipelines Section -->
         <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
           <h2 class="mb-4 text-xl font-semibold text-gray-900 dark:text-white">Pipelines</h2>
+          
+          <!-- Pipeline Stats -->
+          <div class="mb-6 grid grid-cols-4 gap-4">
+            <div class="rounded-lg bg-green-50 p-4 dark:bg-green-900">
+              <p class="text-sm text-green-600 dark:text-green-200">Successful</p>
+              <p class="text-2xl font-bold text-green-700 dark:text-green-100">{{ pipelineStats.successfulPipelines }}</p>
+            </div>
+            <div class="rounded-lg bg-red-50 p-4 dark:bg-red-900">
+              <p class="text-sm text-red-600 dark:text-red-200">Failed</p>
+              <p class="text-2xl font-bold text-red-700 dark:text-red-100">{{ pipelineStats.failedPipelines }}</p>
+            </div>
+            <div class="rounded-lg bg-blue-50 p-4 dark:bg-blue-900">
+              <p class="text-sm text-blue-600 dark:text-blue-200">Success Rate</p>
+              <p class="text-2xl font-bold text-blue-700 dark:text-blue-100">{{ pipelineStats.successRate.toFixed(1) }}%</p>
+            </div>
+            <div class="rounded-lg bg-violet-50 p-4 dark:bg-violet-900">
+              <p class="text-sm text-violet-600 dark:text-violet-200">Deployments/Day</p>
+              <p class="text-2xl font-bold text-violet-700 dark:text-violet-100">{{ pipelineStats.deploymentFrequency.toFixed(1) }}</p>
+            </div>
+          </div>
           <div class="space-y-4">
             <div v-for="pipeline in pipelines" :key="pipeline.id" class="border-b pb-4 last:border-0">
               <div class="flex items-center justify-between">
@@ -93,6 +136,41 @@
         <!-- Contributors Section -->
         <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
           <h2 class="mb-4 text-xl font-semibold text-gray-900 dark:text-white">Contributors</h2>
+          
+          <!-- Contributor Stats -->
+          <div class="mb-6 grid grid-cols-2 gap-4">
+            <div class="rounded-lg bg-amber-50 p-4 dark:bg-amber-900">
+              <div class="flex items-center justify-between">
+                <p class="text-sm text-amber-600 dark:text-amber-200">Bus Factor</p>
+                <span 
+                  :class="[
+                    'px-2 py-1 text-xs rounded-full',
+                    contributorStats.busFactor > 2 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                  ]"
+                >
+                  {{ contributorStats.busFactor > 2 ? 'Healthy' : 'At Risk' }}
+                </span>
+              </div>
+              <p class="text-2xl font-bold text-amber-700 dark:text-amber-100">{{ contributorStats.busFactor }}</p>
+            </div>
+            <div class="rounded-lg bg-orange-50 p-4 dark:bg-orange-900">
+              <div class="flex items-center justify-between">
+                <p class="text-sm text-orange-600 dark:text-orange-200">Top Contributor</p>
+                <span 
+                  :class="[
+                    'px-2 py-1 text-xs rounded-full',
+                    !contributorStats.imbalanceContribution ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                  ]"
+                >
+                  {{ !contributorStats.imbalanceContribution ? 'Balanced' : 'Imbalanced' }}
+                </span>
+              </div>
+              <p class="text-lg font-bold text-orange-700 dark:text-orange-100 truncate">{{ contributorStats.topContributor }}</p>
+              <p class="text-sm text-orange-600 dark:text-orange-200">{{ contributorStats.topContributorPercentage.toFixed(1) }}% of commits</p>
+            </div>
+          </div>
           <div class="space-y-4">
             <div
               v-for="contributor in contributors"
@@ -140,11 +218,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useGitlabStore } from '@/stores/gitlab'
 import { useGithubStore } from '@/stores/github'
 import { useAzureStore } from '@/stores/azure'
+import { Analyzer } from '@/services/analyzer'
 import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile } from '@/types/repository'
 import type { Repository as GitLabRepository } from '@/types/gitlab'
 import type { Repository as GitHubRepository } from '@/types/github'
@@ -166,6 +245,45 @@ const files = ref<RepositoryFile[]>([])
 const timeFilter = ref<TimeFilter>({
   startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   endDate: new Date().toISOString().split('T')[0]
+})
+
+const analyzer = new Analyzer()
+
+const pipelineStats = computed(() => analyzer.analyzePipelines(pipelines.value, timeFilter.value))
+const commitStats = computed(() => analyzer.analyzeCommits(commits.value, timeFilter.value))
+const contributorStats = computed(() => analyzer.analyzeContributors(contributors.value))
+
+// Code ratio styling
+const codeRatioColor = computed(() => {
+  const ratio = commitStats.value.addRemoveRatio
+  if (ratio === Infinity) return 'rounded-lg bg-emerald-50 p-4 dark:bg-emerald-900'
+  if (ratio > 1.5) return 'rounded-lg bg-green-50 p-4 dark:bg-green-900'
+  if (ratio >= 0.75) return 'rounded-lg bg-yellow-50 p-4 dark:bg-yellow-900'
+  return 'rounded-lg bg-red-50 p-4 dark:bg-red-900'
+})
+
+const codeRatioTextColor = computed(() => {
+  const ratio = commitStats.value.addRemoveRatio
+  if (ratio === Infinity) return 'text-emerald-600 dark:text-emerald-200'
+  if (ratio > 1.5) return 'text-green-600 dark:text-green-200'
+  if (ratio >= 0.75) return 'text-yellow-600 dark:text-yellow-200'
+  return 'text-red-600 dark:text-red-200'
+})
+
+const codeRatioValueColor = computed(() => {
+  const ratio = commitStats.value.addRemoveRatio
+  if (ratio === Infinity) return 'text-emerald-700 dark:text-emerald-100'
+  if (ratio > 1.5) return 'text-green-700 dark:text-green-100'
+  if (ratio >= 0.75) return 'text-yellow-700 dark:text-yellow-100'
+  return 'text-red-700 dark:text-red-100'
+})
+
+const codeRatioTrend = computed(() => {
+  const ratio = commitStats.value.addRemoveRatio
+  if (ratio === Infinity) return '(Growing Fast)'
+  if (ratio > 1.5) return '(Growing)'
+  if (ratio >= 0.75) return '(Stable)'
+  return '(Shrinking)'  
 })
 
 const formatSize = (bytes: number) => {

@@ -1,11 +1,13 @@
 import type { Repository } from '@/types/gitlab'
 import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile } from '@/types/repository'
+import { GitService } from './git'
 
-export class GitlabService {
-  private token: string = ''
+export class GitlabService extends GitService {
+  token: string = ''
   private baseUrl: string = ''
 
   constructor(baseUrl: string = 'https://gitlab.com') {
+    super()
     this.setBaseUrl(baseUrl)
   }
 
@@ -59,7 +61,9 @@ export class GitlabService {
       author_name: commit.author_name,
       author_email: commit.author_email,
       created_at: commit.created_at,
-      web_url: commit.web_url
+      web_url: commit.web_url,
+      code_added: commit.stats?.additions || 0,
+      code_removed: commit.stats?.deletions || 0
     }))
   }
 

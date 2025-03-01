@@ -91,6 +91,11 @@ const rememberMe = ref(false)
 
 const handleLogin = async () => {
   try {
+    if (rememberMe.value) {
+      localStorage.setItem('github_token', token.value)
+    } else {
+      localStorage.removeItem('github_token')
+    }
     await githubStore.login(token.value)
     if (githubStore.auth.isAuthenticated) {
       router.push('/')
@@ -98,5 +103,12 @@ const handleLogin = async () => {
   } catch (err) {
     console.error('Login failed:', err)
   }
+}
+
+const savedToken = localStorage.getItem('github_token')
+
+if (savedToken) {
+  token.value = savedToken
+  rememberMe.value = true
 }
 </script>

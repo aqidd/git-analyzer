@@ -1,8 +1,9 @@
 import type { Repository } from '@/types/github'
 import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile } from '@/types/repository'
+import { GitService } from './git'
 
-export class GithubService {
-  private token: string = ''
+export class GithubService extends GitService {
+  token: string = ''
   private baseUrl: string = 'https://api.github.com'
 
   setToken(token: string) {
@@ -45,13 +46,22 @@ export class GithubService {
     const data = await this.request(
       `/repos/${owner}/${repo}/commits?since=${startDate}&until=${endDate}&per_page=100`
     )
-    return data.map((item: any) => ({
+    // Get detailed stats for each commit
+    const commitStats = await Promise.all(
+      data.map((item: any) =>
+        this.request(`/repos/${owner}/${repo}/commits/${item.sha}`)
+      )
+    )
+
+    return data.map((item: any, index: number) => ({
       id: item.sha,
       message: item.commit.message,
       author_name: item.commit.author.name,
       author_email: item.commit.author.email,
       created_at: item.commit.author.date,
-      html_url: item.html_url
+      html_url: item.html_url,
+      code_added: commitStats[index]?.stats?.additions || 0,
+      code_removed: commitStats[index]?.stats?.deletions || 0
     }))
   }
 
@@ -63,6 +73,7 @@ export class GithubService {
     return data.workflow_runs.map((run: any) => ({
       id: run.id,
       status: run.status,
+      conclusion: run.conclusion,
       ref: run.head_branch,
       sha: run.head_sha,
       html_url: run.html_url,
