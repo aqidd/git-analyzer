@@ -227,6 +227,20 @@ export class AzureService extends GitService {
     return Array.from(contributorMap.values())
   }
 
+  async getBranches(projectId: string, repoId: string): Promise<Branch[]> {
+    const project = await this.request<{ name: string }>(`projects/${projectId}`)
+    const data = await this.request<ApiResponse<any>>(`git/repositories/${repoId}/refs/heads`, project.name)
+
+    return data.value.map(branch => ({
+      name: branch.name.replace('refs/heads/', ''),
+      lastCommitDate: branch.commit?.committer?.date || '',
+      lastCommitSha: branch.objectId || '',
+      lastCommitMessage: branch.commit?.comment || '',
+      lastCommitAuthor: branch.commit?.committer?.name || '',
+      protected: branch.isLocked || false
+    }))
+  }
+
   async getFiles(projectId: string, repoId: string): Promise<RepositoryFile[]> {
     const project = await this.request<{ name: string }>(`projects/${projectId}`)
     const data = await this.request<ApiResponse<any>>(`git/repositories/${repoId}/items?recursionLevel=full`, project.name)

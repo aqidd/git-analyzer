@@ -194,6 +194,75 @@
           </div>
         </div>
 
+        <!-- Branches Section -->
+        <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
+          <h2 class="mb-4 text-xl font-semibold text-gray-900 dark:text-white">Branches</h2>
+          
+          <!-- Branch Stats -->
+          <div class="mb-6 grid grid-cols-2 gap-4">
+            <div class="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-900">
+              <div class="flex items-center justify-between">
+                <p class="text-sm text-emerald-600 dark:text-emerald-200">Branch Health</p>
+                <span 
+                  :class="[
+                    'px-2 py-1 text-xs rounded-full',
+                    branchStats?.healthyBranchCount / branchStats?.totalBranches > 0.7 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                  ]"
+                >
+                  {{ branchStats?.branchHealth }}
+                </span>
+              </div>
+              <p class="text-2xl font-bold text-emerald-700 dark:text-emerald-100">{{ branchStats?.healthyBranchCount }} / {{ branchStats?.totalBranches }}</p>
+              <p class="text-sm text-emerald-600 dark:text-emerald-200">Healthy Branches</p>
+            </div>
+            <div class="rounded-lg bg-rose-50 p-4 dark:bg-rose-900">
+              <p class="text-sm text-rose-600 dark:text-rose-200">Stagnant Branches</p>
+              <p class="text-2xl font-bold text-rose-700 dark:text-rose-100">{{ branchStats?.stagnantBranchCount }}</p>
+              <p class="text-sm text-rose-600 dark:text-rose-200">Inactive >30 days</p>
+            </div>
+          </div>
+
+          <!-- Stagnant Branches -->
+          <div v-if="branchStats?.stagnantBranches.length" class="mb-6">
+            <h3 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Stagnant Branches</h3>
+            <div class="space-y-2">
+              <div 
+                v-for="branch in branchStats.stagnantBranches" 
+                :key="branch.name"
+                class="flex items-center justify-between rounded-lg bg-gray-50 p-2 dark:bg-gray-700"
+              >
+                <span class="font-medium text-gray-900 dark:text-white">{{ branch.name }}</span>
+                <span class="text-sm text-gray-500 dark:text-gray-400">{{ branch.daysSinceLastCommit }} days old</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- All Branches -->
+          <div class="space-y-2">
+            <div 
+              v-for="branch in branches" 
+              :key="branch.name"
+              class="flex items-center justify-between border-b pb-2 last:border-0"
+            >
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-gray-900 dark:text-white">{{ branch.name }}</span>
+                  <span 
+                    v-if="branch.protected"
+                    class="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                  >
+                    Protected
+                  </span>
+                </div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  Last commit by {{ branch.lastCommitAuthor }} on {{ new Date(branch.lastCommitDate).toLocaleDateString() }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Files Section -->
         <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
           <h2 class="mb-4 text-xl font-semibold text-gray-900 dark:text-white">Files</h2>
@@ -225,7 +294,7 @@ import { useGitlabStore } from '@/stores/gitlab'
 import { useGithubStore } from '@/stores/github'
 import { useAzureStore } from '@/stores/azure'
 import { Analyzer } from '@/services/analyzer'
-import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile } from '@/types/repository'
+import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, Branch } from '@/types/repository'
 import type { Repository as GitLabRepository } from '@/types/gitlab'
 import type { Repository as GitHubRepository } from '@/types/github'
 import type { Repository as AzureRepository } from '@/types/azure'
@@ -242,6 +311,8 @@ const commits = ref<Commit[]>([])
 const pipelines = ref<Pipeline[]>([])
 const contributors = ref<Contributor[]>([])
 const files = ref<RepositoryFile[]>([])
+const branches = ref<Branch[]>([])
+const branchStats = ref<any>(null)
 
 const timeFilter = ref<TimeFilter>({
   startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -338,6 +409,8 @@ const loadData = async () => {
       pipelines.value = await azureStore.service.getPipelines(projectId, id, timeFilter.value)
       contributors.value = await azureStore.service.getContributors(projectId, id)
       files.value = await azureStore.service.getFiles(projectId, id)
+      branches.value = await azureStore.service.getBranches(projectId, id)
+      branchStats.value = analyzer.analyzeBranches(branches.value)
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load repository data'

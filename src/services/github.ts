@@ -41,6 +41,18 @@ export class GithubService extends GitService {
     return data
   }
 
+  async getBranches(owner: string, repo: string): Promise<Branch[]> {
+    const data = await this.request(`/repos/${owner}/${repo}/branches`)
+    return data.map((branch: any) => ({
+      name: branch.name,
+      lastCommitDate: branch.commit?.commit?.committer?.date || '',
+      lastCommitSha: branch.commit?.sha || '',
+      lastCommitMessage: branch.commit?.commit?.message || '',
+      lastCommitAuthor: branch.commit?.commit?.committer?.name || '',
+      protected: branch.protected || false
+    }))
+  }
+
   async getCommits(owner: string, repo: string, timeFilter: TimeFilter): Promise<Commit[]> {
     const { startDate, endDate } = timeFilter
     const data = await this.request(

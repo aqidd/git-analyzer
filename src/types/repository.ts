@@ -43,3 +43,12 @@ export interface RepositoryFile {
   size: number
   last_modified: string
 }
+
+export interface Branch {
+  name: string
+  lastCommitDate: string
+  lastCommitSha: string
+  lastCommitMessage?: string
+  lastCommitAuthor?: string
+  protected?: boolean
+}

@@ -50,6 +50,18 @@ export class GitlabService extends GitService {
     return data
   }
 
+  async getBranches(owner: string, repo: string): Promise<Branch[]> {
+    const data = await this.request(`/projects/${owner}%2F${repo}/repository/branches`)
+    return data.map((branch: any) => ({
+      name: branch.name,
+      lastCommitDate: branch.commit?.committed_date || '',
+      lastCommitSha: branch.commit?.id || '',
+      lastCommitMessage: branch.commit?.message || '',
+      lastCommitAuthor: branch.commit?.committer_name || '',
+      protected: branch.protected || false
+    }))
+  }
+
   async getCommits(projectId: number, timeFilter: TimeFilter): Promise<Commit[]> {
     const { startDate, endDate } = timeFilter
     const data = await this.request(
