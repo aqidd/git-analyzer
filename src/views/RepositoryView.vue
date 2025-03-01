@@ -116,6 +116,7 @@
               <div class="flex items-center justify-between">
                 <div>
                   <p class="font-medium text-gray-900 dark:text-white">{{ pipeline.ref }}</p>
+                  <p class="font-medium text-gray-900 dark:text-white">{{ pipeline.name }}</p>
                   <p class="text-sm text-gray-500 dark:text-gray-400">
                     Status: {{ pipeline.status }} | Updated:
                     {{ new Date(pipeline.updated_at).toLocaleDateString() }}
@@ -332,10 +333,11 @@ const loadData = async () => {
       if (!repository.value) {
         throw new Error('Repository not found')
       }
-      commits.value = await azureStore.service.getCommits(id, timeFilter.value)
-      pipelines.value = await azureStore.service.getPipelines(id, timeFilter.value)
-      contributors.value = await azureStore.service.getContributors(id, timeFilter.value)
-      files.value = await azureStore.service.getFiles(id)
+      const projectId = repository.value.project.id
+      commits.value = await azureStore.service.getCommits(projectId, id, timeFilter.value)
+      pipelines.value = await azureStore.service.getPipelines(projectId, id, timeFilter.value)
+      contributors.value = await azureStore.service.getContributors(projectId, id)
+      files.value = await azureStore.service.getFiles(projectId, id)
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load repository data'

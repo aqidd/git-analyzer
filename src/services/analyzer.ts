@@ -17,14 +17,23 @@ export class Analyzer {
     }
 
     analyzePipelines(pipelines: Pipeline[], timeFilter: TimeFilter) {
-        const successfulPipelines = pipelines.filter(p => p.status === 'success' || p.status === 'succeeded' || p.conclusion === 'success').length
-        const failedPipelines = pipelines.filter(p => p.status === 'failed' || p.conclusion === 'failure').length
+        const successfulPipelines = pipelines.filter(p => 
+            p.status === 'success' || 
+            p.status === 'succeeded' || 
+            p.status === 'completed' || 
+            p.conclusion === 'success'
+        ).length
+        const failedPipelines = pipelines.filter(p => 
+            p.status === 'failed' || 
+            p.status === 'failure' || 
+            p.conclusion === 'failure'
+        ).length
         const totalPipelines = pipelines.length
         
         // Calculate deployment frequency for main/master/develop branches
         const mainBranchPipelines = pipelines.filter(p => 
             (p.ref === 'main' || p.ref === 'master' || p.ref === 'develop') &&
-            (p.status === 'success' || p.status === 'succeeded' || p.conclusion === 'success')
+            (p.status === 'success' || p.status === 'succeeded' || p.status === 'completed' || p.conclusion === 'success')
         ).length
 
         const startDate = new Date(timeFilter.startDate)

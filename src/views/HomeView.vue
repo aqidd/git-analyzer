@@ -179,7 +179,6 @@ function getRepoStarCount(repo: AllRepository): number {
 }
 
 onMounted(() => {
-  console.log('home mounted')
   if (!gitlabStore.auth.isAuthenticated && !githubStore.auth.isAuthenticated && !azureStore.auth.isAuthenticated) {
     router.push('/login')
     return
