@@ -57,14 +57,29 @@
           </div>
 
           <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <!-- Commit Stats -->
+            <!-- Row 1 Commit Stats -->
+            <!-- 1. Code Activity Score -->
             <div class="mb-6">
-              <div class="rounded-lg bg-indigo-50 p-4 dark:bg-indigo-900">
-                <p class="text-sm text-indigo-600 dark:text-indigo-200">Daily Commit Rate</p>
-                <p class="text-2xl font-bold text-indigo-700 dark:text-indigo-100">{{
-                  commitStats.dailyCommitRate.toFixed(1) }}</p>
+              <div
+                class="flex flex-col gap-1 rounded-lg border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-500 dark:text-gray-400">Code Activity</span>
+                  <span :class="[
+                    'rounded-full px-2 py-0.5 text-xs font-medium',
+                    commitStats.dailyCommitRate >= 1 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200'
+                  ]">
+                    {{ commitStats.dailyCommitRate >= 1 ? 'Active' : 'Low Activity' }}
+                  </span>
+                </div>
+                <div class="mt-2">
+                  <div class="text-2xl font-bold text-gray-900 dark:text-white">{{
+                    commitStats.dailyCommitRate.toFixed(1)
+                    }}</div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">commits/day</p>
+                </div>
               </div>
             </div>
+            <!-- 2. Number of detailed commit -->
             <div class="mb-6">
               <div class="rounded-lg bg-purple-50 p-4 dark:bg-purple-900">
                 <p class="text-sm text-purple-600 dark:text-purple-200">Detailed Commits</p>
@@ -72,6 +87,7 @@
                   commitStats.commitWithLongDescription }}</p>
               </div>
             </div>
+            <!-- 3. Code churn (growing/shrinking) -->
             <div class="mb-6" :class="[codeRatioColor]">
               <div class="rounded-lg p-4" :class="[codeRatioColor]">
                 <p :class="[codeRatioTextColor]">Code Add:Remove Ratio</p>
@@ -85,18 +101,19 @@
                 </div>
               </div>
             </div>
+            <div class="mb-6"></div>
 
-            <!-- Pipeline Stats -->
+            <!-- Row 2 Pipeline Stats -->
             <div class="mb-6">
               <div class="rounded-lg bg-green-50 p-4 dark:bg-green-900">
-                <p class="text-sm text-green-600 dark:text-green-200">Successful</p>
+                <p class="text-sm text-green-600 dark:text-green-200">Successful Pipeline</p>
                 <p class="text-2xl font-bold text-green-700 dark:text-green-100">{{ pipelineStats.successfulPipelines }}
                 </p>
               </div>
             </div>
             <div class="mb-6">
               <div class="rounded-lg bg-red-50 p-4 dark:bg-red-900">
-                <p class="text-sm text-red-600 dark:text-red-200">Failed</p>
+                <p class="text-sm text-red-600 dark:text-red-200">Failed Pipeline</p>
                 <p class="text-2xl font-bold text-red-700 dark:text-red-100">{{ pipelineStats.failedPipelines }}</p>
               </div>
             </div>
@@ -108,11 +125,24 @@
                 </p>
               </div>
             </div>
+            <!-- Pipeline Health Score -->
             <div class="mb-6">
-              <div class="rounded-lg bg-violet-50 p-4 dark:bg-violet-900">
-                <p class="text-sm text-violet-600 dark:text-violet-200">Deployments/Day</p>
-                <p class="text-2xl font-bold text-violet-700 dark:text-violet-100">{{
-                  pipelineStats.deploymentFrequency.toFixed(1) }}</p>
+              <div
+                class="flex flex-col gap-1 rounded-lg border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-500 dark:text-gray-400">Pipeline Health</span>
+                  <span :class="[
+                    'rounded-full px-2 py-0.5 text-xs font-medium',
+                    pipelineStats.successRate >= 80 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200'
+                  ]">
+                    {{ pipelineStats.successRate.toFixed(0) }}% Success
+                  </span>
+                </div>
+                <div class="mt-2">
+                  <div class="text-2xl font-bold text-gray-900 dark:text-white">{{
+                    pipelineStats.deploymentFrequency.toFixed(1) }}</div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">deployments/day</p>
+                </div>
               </div>
             </div>
 
@@ -150,6 +180,25 @@
                   contributorStats.topContributorPercentage.toFixed(1) }}% of commits</p>
               </div>
             </div>
+            <!-- Team Health Score -->
+            <div class="mb-6">
+              <div
+                class="flex flex-col gap-1 rounded-lg border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-500 dark:text-gray-400">Team Health</span>
+                  <span :class="[
+                    'rounded-full px-2 py-0.5 text-xs font-medium',
+                    contributorStats.giniCoefficient < 0.4 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200'
+                  ]">
+                    {{ contributorStats.giniCoefficient < 0.4 ? 'Balanced' : 'Concentrated' }} </span>
+                </div>
+                <div class="mt-2">
+                  <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ contributorStats.busFactor }}</div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">bus factor</p>
+                </div>
+              </div>
+            </div>
+            <div class="mb-6"></div>
 
             <!-- Branch Stats -->
             <div class="mb-6">
@@ -179,28 +228,6 @@
               </div>
             </div>
 
-            <!-- Code Activity Score -->
-            <div class="mb-6">
-              <div
-                class="flex flex-col gap-1 rounded-lg border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-500 dark:text-gray-400">Code Activity</span>
-                  <span :class="[
-                    'rounded-full px-2 py-0.5 text-xs font-medium',
-                    commitStats.dailyCommitRate >= 1 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200'
-                  ]">
-                    {{ commitStats.dailyCommitRate >= 1 ? 'Active' : 'Low Activity' }}
-                  </span>
-                </div>
-                <div class="mt-2">
-                  <div class="text-2xl font-bold text-gray-900 dark:text-white">{{
-                    commitStats.dailyCommitRate.toFixed(1)
-                    }}</div>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">commits/day</p>
-                </div>
-              </div>
-            </div>
-
             <!-- Branch Health Score -->
             <div class="mb-6">
               <div
@@ -220,47 +247,7 @@
                   <p class="text-sm text-gray-500 dark:text-gray-400">stagnant branches</p>
                 </div>
               </div>
-            </div>
-
-            <!-- Pipeline Health Score -->
-            <div class="mb-6">
-              <div
-                class="flex flex-col gap-1 rounded-lg border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-500 dark:text-gray-400">Pipeline Health</span>
-                  <span :class="[
-                    'rounded-full px-2 py-0.5 text-xs font-medium',
-                    pipelineStats.successRate >= 80 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200'
-                  ]">
-                    {{ pipelineStats.successRate.toFixed(0) }}% Success
-                  </span>
-                </div>
-                <div class="mt-2">
-                  <div class="text-2xl font-bold text-gray-900 dark:text-white">{{
-                    pipelineStats.deploymentFrequency.toFixed(1) }}</div>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">deployments/day</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Team Health Score -->
-            <div class="mb-6">
-              <div
-                class="flex flex-col gap-1 rounded-lg border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-500 dark:text-gray-400">Team Health</span>
-                  <span :class="[
-                    'rounded-full px-2 py-0.5 text-xs font-medium',
-                    contributorStats.giniCoefficient < 0.4 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200'
-                  ]">
-                    {{ contributorStats.giniCoefficient < 0.4 ? 'Balanced' : 'Concentrated' }} </span>
-                </div>
-                <div class="mt-2">
-                  <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ contributorStats.busFactor }}</div>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">bus factor</p>
-                </div>
-              </div>
-            </div>
+            </div>            
 
             <!-- Stagnant Branches -->
             <div v-if="branchStats?.stagnantBranches.length" class="mb-6 col-span-full">
