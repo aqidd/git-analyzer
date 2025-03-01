@@ -30,3 +30,5 @@ coverage
 *.tsbuildinfo
 
 .vscode
+scripts/azure_metrics.sh
+scripts/azure_repo_list.sh

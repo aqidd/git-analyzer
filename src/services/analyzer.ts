@@ -65,7 +65,7 @@ export class Analyzer {
             })),
             stagnantBranchCount: stagnantBranches.length,
             healthyBranchCount: branches.length - stagnantBranches.length,
-            branchHealth: ((branches.length - stagnantBranches.length) / branches.length * 100).toFixed(1) + '%'
+            branchHealth: branches.length > 0 ? ((branches.length - stagnantBranches.length) / branches.length * 100).toFixed(1) + '%' : 'N/A'
         }
     }
 
@@ -98,7 +98,7 @@ export class Analyzer {
         }
     }
 
-    private calculateGiniCoefficient(values: number[]): number {
+    calculateGiniCoefficient(values: number[]): number {
         if (values.length === 0) return 0
         if (values.length === 1) return 0
         
@@ -118,9 +118,8 @@ export class Analyzer {
     }
 
     private getCommitDistributionCategory(gini: number): string {
-        if (gini < 0.2) return 'Very Equal'
-        if (gini < 0.4) return 'Equal'
-        if (gini < 0.6) return 'Moderate'
+        if (gini < 0.2) return 'Equal'
+        if (gini < 0.4) return 'Moderate'
         if (gini < 0.8) return 'Unequal'
         return 'Very Unequal'
     }
