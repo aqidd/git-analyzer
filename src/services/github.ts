@@ -43,13 +43,18 @@ export class GithubService extends GitService {
 
   async getBranches(owner: string, repo: string): Promise<Branch[]> {
     const data = await this.request(`/repos/${owner}/${repo}/branches`)
-    return data.map((branch: any) => ({
-      name: branch.name,
-      lastCommitDate: branch.commit?.commit?.committer?.date || '',
-      lastCommitSha: branch.commit?.sha || '',
-      lastCommitMessage: branch.commit?.commit?.message || '',
-      lastCommitAuthor: branch.commit?.commit?.committer?.name || '',
-      protected: branch.protected || false
+    const protectedBranches = new Set((await this.request(`/repos/${owner}/${repo}/branches?protected=true`)).map((b: any) => b.name))
+    
+    return await Promise.all(data.map(async (branch: any) => {
+      const commit = await this.request(`/repos/${owner}/${repo}/commits/${branch.commit.sha}`)
+      return {
+        name: branch.name,
+        lastCommitDate: commit.commit.author.date || '',
+        lastCommitSha: branch.commit.sha || '',
+        lastCommitMessage: commit.commit.message || '',
+        lastCommitAuthor: commit.commit.author.name || '',
+        protected: protectedBranches.has(branch.name)
+      }
     }))
   }
 

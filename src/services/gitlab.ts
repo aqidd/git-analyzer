@@ -51,13 +51,13 @@ export class GitlabService extends GitService {
   }
 
   async getBranches(owner: string, repo: string): Promise<Branch[]> {
-    const data = await this.request(`/projects/${owner}%2F${repo}/repository/branches`)
+    const data = await this.request(`/projects/${owner}/repository/branches`)
     return data.map((branch: any) => ({
       name: branch.name,
       lastCommitDate: branch.commit?.committed_date || '',
       lastCommitSha: branch.commit?.id || '',
       lastCommitMessage: branch.commit?.message || '',
-      lastCommitAuthor: branch.commit?.committer_name || '',
+      lastCommitAuthor: branch.commit?.author_name || '',
       protected: branch.protected || false
     }))
   }

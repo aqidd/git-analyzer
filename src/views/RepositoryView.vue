@@ -384,6 +384,8 @@ const loadData = async () => {
       pipelines.value = await gitlabStore.service.getPipelines(projectId, timeFilter.value)
       contributors.value = await gitlabStore.service.getContributors(projectId, timeFilter.value)
       files.value = await gitlabStore.service.getFiles(projectId)
+      branches.value = await gitlabStore.service.getBranches(String(id), String(id))
+      branchStats.value = analyzer.analyzeBranches(branches.value)
     } else if (type === 'github') {
       if (!githubStore.service) {
         throw new Error('GitHub service not initialized. Please log in again.')
@@ -396,6 +398,8 @@ const loadData = async () => {
       pipelines.value = await githubStore.service.getPipelines(owner, repo, timeFilter.value)
       contributors.value = await githubStore.service.getContributors(owner, repo, timeFilter.value)
       files.value = await githubStore.service.getFiles(owner, repo)
+      branches.value = await githubStore.service.getBranches(owner, repo)
+      branchStats.value = analyzer.analyzeBranches(branches.value)
     } else if (type === 'azure') {
       if (!azureStore.auth.isAuthenticated) {
         throw new Error('Azure DevOps service not initialized. Please log in again.')
