@@ -18,7 +18,7 @@ describe('HealthMetricCard', () => {
     expect(wrapper.text()).toContain('Active')
     expect(wrapper.text()).toContain('2.5')
     expect(wrapper.text()).toContain('commits/day')
-    expect(wrapper.find('.bg-green-100').exists()).toBe(true)
+    expect(wrapper.find('.bg-green-200').exists()).toBe(true)
   })
 
   it('renders properly with unhealthy status', () => {
@@ -31,7 +31,7 @@ describe('HealthMetricCard', () => {
     })
     
     expect(wrapper.text()).toContain('Low Activity')
-    expect(wrapper.find('.bg-yellow-100').exists()).toBe(true)
+    expect(wrapper.find('.bg-yellow-200').exists()).toBe(true)
   })
 
   it('handles numeric values', () => {

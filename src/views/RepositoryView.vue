@@ -72,7 +72,7 @@
               title="Detailed Commits"
               :status="commitStats.commitWithLongDescription > 0 ? 'Active' : 'Low Activity'"
               :value="commitStats.commitWithLongDescription"
-              unit="commits"
+              unit="commits with long description"
               :isHealthy="commitStats.commitWithLongDescription > 0"
             />
             <!-- 3. Code Churn -->
@@ -80,31 +80,31 @@
               title="Code Growth"
               :status="codeRatioTrend"
               :value="commitStats.addRemoveRatio === Infinity ? '∞' : commitStats.addRemoveRatio.toFixed(1)"
-              unit="ratio"
+              unit="code added ratio"
               :isHealthy="commitStats.addRemoveRatio >= 0.5 && commitStats.addRemoveRatio <= 2"
             />
             <div class="mb-6"></div>
 
             <!-- Row 2 Pipeline Stats -->
             <HealthMetricCard
-              title="Successful Pipelines"
+              title="Successful Builds"
               :status="pipelineStats.successfulPipelines > 0 ? 'Good' : 'No Pipelines'"
               :value="pipelineStats.successfulPipelines"
               unit="pipelines"
               :isHealthy="pipelineStats.successfulPipelines > 0"
             />
             <HealthMetricCard
-              title="Failed Pipelines"
+              title="Failed Builds"
               :status="pipelineStats.failedPipelines === 0 ? 'Perfect' : 'Has Failures'"
               :value="pipelineStats.failedPipelines"
               unit="pipelines"
               :isHealthy="pipelineStats.failedPipelines === 0"
             />
             <HealthMetricCard
-              title="Pipeline Success Rate"
-              :status="pipelineStats.successRate >= 80 ? 'Good' : 'Needs Improvement'"
-              :value="pipelineStats.successRate.toFixed(1)"
-              unit="%"
+              title="Build Success Rate"
+              :status="pipelineStats.successRate >= 80 ? 'Good' : 'Moderate'"
+              :value="`${pipelineStats.successRate.toFixed(1)}%`"
+              unit="percentage of build success"
               :isHealthy="pipelineStats.successRate >= 80"
             />
             <!-- Pipeline Health Score -->
@@ -126,12 +126,18 @@
             />
             <HealthMetricCard
               title="Top Contributor"
-              :status="contributorStats.commitDistribution"
-              :value="contributorStats.topContributor"
-              :unit="`${contributorStats.topContributorPercentage}% of Commits`"
+              :status="`${Math.round(contributorStats.totalCommits * (contributorStats.topContributorPercentage / 100))} commits`"
+              :value="contributorStats.topContributor.substring(0, 14) + '...'"
+              :unit="`${contributorStats.topContributorPercentage.toFixed(2)}% of Commits`"
               :isHealthy="contributorStats.giniCoefficient < 0.4"
             />
-            <div class="mb-6"></div>
+            <HealthMetricCard
+              title="Commit Distribution"
+              :status="contributorStats.giniCoefficient < 0.4 ? 'Healthy' : 'At Risk'"
+              :value="contributorStats.giniCoefficient.toFixed(2)"
+              unit="Gini Coefficient"
+              :isHealthy="contributorStats.giniCoefficient < 0.4"
+            />
             <div class="mb-6"></div>
 
             <!-- Branch Stats -->

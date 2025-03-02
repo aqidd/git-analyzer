@@ -73,8 +73,8 @@
 
       <!-- Contributors -->
       <div v-if="currentTab === 'contributors'" class="space-y-4">
-        <div v-for="contributor in paginatedItems.contributors" :key="contributor.id" class="flex items-start justify-between rounded-lg bg-white p-4 border border-gray-200 dark:border-gray-700 dark:bg-gray-800">
-          <img v-if="contributor.avatar_url" :src="contributor.avatar_url" :alt="contributor.name" class="h-10 w-10 rounded-full" />
+        <div v-for="contributor in paginatedItems.contributors" :key="contributor.id" class="flex items-start rounded-lg bg-white p-4 border border-gray-200 dark:border-gray-700 dark:bg-gray-800">
+          <img v-if="contributor.avatar_url" :src="contributor.avatar_url" :alt="contributor.name" class="h-10 w-10 rounded-full mr-4" />
           <div>
             <p class="font-medium text-gray-900 dark:text-white">{{ contributor.name }}</p>
             <p class="text-sm text-gray-500 dark:text-gray-400">{{ contributor.commits }} commits</p>
