@@ -1,3 +1,5 @@
+import type { Repository as BaseRepository } from './repository'
+
 export interface AzureAuth {
   token: string
   organization: string
@@ -15,15 +17,9 @@ export interface Project {
   revision: number
 }
 
-export interface Repository {
-  id: string
-  name: string
-  description: string | null
+export interface Repository extends BaseRepository {
   url: string
-  defaultBranch: string
   size: number
-  visibility: string
-  lastCommitDate: string
   project: {
     id: string
     name: string

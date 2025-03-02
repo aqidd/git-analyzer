@@ -29,8 +29,10 @@
       </div>
 
       <div v-if="loading" class="flex justify-center items-center h-64">
-        <div role="status">
-          Loading...
+        <div role="status" class="flex items-center justify-center">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" class="animate-spin">
+            <path stroke="#0A0A30" stroke-linecap="round" stroke-width="1.5" d="M12 6.864v1.333m0 7.606v1.333M17.136 12h-1.333m-7.606 0H6.864m8.768 3.632l-.943-.943M9.311 9.311l-.943-.943m0 7.264l.943-.943m5.378-5.378l.943-.943" style="animation:loader4 1.5s linear infinite both;transform-origin:center center"/>
+          </svg>
           <span class="sr-only">Loading...</span>
         </div>
       </div>
@@ -50,64 +52,11 @@
       </div>
 
       <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        <div
+        <RepositoryCard
           v-for="repo in repositories"
           :key="repo.id"
-          class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700"
-        >
-          <div class="p-5">
-            <div class="flex items-center mb-3">
-              <img
-                :src="getRepoAvatarUrl(repo)"
-                :alt="repo.name"
-                class="w-8 h-8 rounded mr-3"
-              />
-              <h5 class="text-xl font-semibold tracking-tight text-gray-900 dark:text-white truncate">
-                {{ repo.name }}
-              </h5>
-            </div>
-            <p class="mb-3 font-normal text-gray-500 dark:text-gray-400 line-clamp-2">
-              {{ repo.description || 'No description available' }}
-            </p>
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-4">
-                <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-300">
-                  {{ repo.default_branch }}
-                </span>
-                <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                  {{ getRepoStarCount(repo) }}
-                </div>
-              </div>
-              <div class="flex items-center space-x-2">
-                <a
-                  :href="getRepoUrl(repo)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  :class="[
-                    'inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white rounded-lg focus:ring-4 focus:outline-none',
-                    isGitLabRepo(repo) ? 'bg-[#FC6D26] hover:bg-[#E24329] focus:ring-[#FC6D26]/50' : 
-                    isAzureRepo(repo) ? 'bg-[#0078D4] hover:bg-[#106EBE] focus:ring-[#0078D4]/50' : 
-                    'bg-[#2DA44E] hover:bg-[#2C974B] focus:ring-[#2DA44E]/50'
-                  ]"
-                >
-                  View
-                </a>
-                <router-link
-                  :to="{
-                    name: 'repository',
-                    params: {
-                      type: isGitLabRepo(repo) ? 'gitlab' : isAzureRepo(repo) ? 'azure' : 'github',
-                      id: getRepositoryId(repo)
-                    }
-                  }"
-                  class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-indigo-600 bg-white border border-indigo-600 rounded-lg hover:bg-indigo-50 focus:ring-4 focus:outline-none focus:ring-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-400 dark:hover:bg-gray-700"
-                >
-                  Analytics
-                </router-link>
-              </div>
-            </div>
-          </div>
-        </div>
+          :repository="repo"
+        />
       </div>
     </div>
   </div>
@@ -119,6 +68,7 @@ import { useRouter } from 'vue-router'
 import { useGitlabStore } from '@/stores/gitlab'
 import { useGithubStore } from '@/stores/github'
 import { useAzureStore } from '@/stores/azure'
+import RepositoryCard from '@/components/RepositoryCard.vue'
 import type { Repository as GitLabRepository } from '@/types/gitlab'
 import type { Repository as GitHubRepository } from '@/types/github'
 import type { Repository as AzureRepository } from '@/types/azure'
@@ -142,52 +92,18 @@ const repositories = computed(() => {
 
 type AllRepository = GitLabRepository | GitHubRepository | AzureRepository
 
-function isGitLabRepo(repo: AllRepository): repo is GitLabRepository {
-  return 'web_url' in repo
-}
 
-function isAzureRepo(repo: AllRepository): repo is AzureRepository {
-  return 'visibility' in repo && !('star_count' in repo) && !('owner' in repo)
-}
-
-function getRepoUrl(repo: AllRepository): string {
-  if (isGitLabRepo(repo)) return repo.web_url
-  if (isAzureRepo(repo)) return repo.url
-  return repo.html_url
-}
-
-function getRepoAvatarUrl(repo: AllRepository): string {
-  if (isGitLabRepo(repo)) {
-    return repo.avatar_url || 'https://www.gravatar.com/avatar/?s=80&d=identicon'
-  }
-  if (isAzureRepo(repo)) {
-    return 'https://www.svgrepo.com/show/448307/azure-devops.svg'
-  }
-  return repo.owner?.avatar_url || 'https://www.gravatar.com/avatar/?s=80&d=identicon'
-}
-
-function getRepositoryId(repo: AllRepository): string | number {
-  if (isGitLabRepo(repo)) return repo.id
-  if (isAzureRepo(repo)) return repo.id
-  return `${repo.owner?.login}/${repo.name}`
-}
-
-function getRepoStarCount(repo: AllRepository): number {
-  if (isGitLabRepo(repo)) return repo.star_count
-  if (isAzureRepo(repo)) return 0
-  return repo.stargazers_count
-}
 
 onMounted(() => {
   if (!gitlabStore.auth.isAuthenticated && !githubStore.auth.isAuthenticated && !azureStore.auth.isAuthenticated) {
     router.push('/login')
     return
   }
-  
+
   if (gitlabStore.auth.isAuthenticated) {
     gitlabStore.fetchRepositories()
   }
-  
+
   if (githubStore.auth.isAuthenticated) {
     githubStore.fetchRepositories()
   }

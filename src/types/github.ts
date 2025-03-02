@@ -1,17 +1,14 @@
+import type { Repository as BaseRepository } from './repository'
+
 export interface GithubAuth {
   token: string
   isAuthenticated: boolean
 }
 
-export interface Repository {
-  id: number
-  name: string
-  description: string
+export interface Repository extends BaseRepository {
   html_url: string
-  default_branch: string
-  visibility: string
-  updated_at: string
   owner: {
+    login: string
     avatar_url: string
   }
   stargazers_count: number

@@ -3,6 +3,17 @@ export interface TimeFilter {
   endDate: string
 }
 
+export interface Repository {
+  id: string | number
+  name: string
+  description: string | null
+  default_branch: string
+  visibility: string
+  last_activity_at?: string
+  updated_at?: string
+  lastCommitDate?: string
+}
+
 export interface Commit {
   id: string
   message: string

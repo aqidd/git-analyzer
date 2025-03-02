@@ -20,6 +20,19 @@
         {{ error }}
       </div>
 
+      <!-- Back Button -->
+      <div class="mb-8">
+        <button
+          @click="$router.push('/')"
+          class="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:ring-offset-gray-900"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left">
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
+          Back to Repository List
+        </button>
+      </div>
+
       <!-- Date Filter -->
       <div class="mb-8 flex gap-4">
         <input type="date" v-model="timeFilter.startDate"
@@ -396,6 +409,8 @@ const loadData = async () => {
       }
       repository.value = azureStore.repositories.find(repo => repo.id === id) || null
       if (!repository.value) {
+        console.log(id)
+        console.log(azureStore.repositories)
         throw new Error('Repository not found')
       }
       const projectId = repository.value.project.id
