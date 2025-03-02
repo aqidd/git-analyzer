@@ -124,10 +124,11 @@ import type { Repository as GitLabRepository } from '@/types/gitlab'
 import type { Repository as GitHubRepository } from '@/types/github'
 import type { Repository as AzureRepository } from '@/types/azure'
 
-const router = useRouter()
+// Initialize stores early to ensure services are available
 const gitlabStore = useGitlabStore()
 const githubStore = useGithubStore()
 const azureStore = useAzureStore()
+const router = useRouter()
 
 const loading = computed(() => gitlabStore.loading || githubStore.loading || azureStore.loading)
 const error = computed(() => gitlabStore.error || githubStore.error || azureStore.error)
@@ -190,22 +191,58 @@ type AllRepository = GitLabRepository | GitHubRepository | AzureRepository
 
 
 
-onMounted(() => {
-  if (!gitlabStore.auth.isAuthenticated && !githubStore.auth.isAuthenticated && !azureStore.auth.isAuthenticated) {
+onMounted(async () => {
+  // Validate tokens first
+  const validationTasks = []
+  let hasValidAuth = false
+
+  if (gitlabStore.auth.isAuthenticated) {
+    validationTasks.push(
+      gitlabStore.service.validateToken().then(isValid => {
+        if (!isValid) gitlabStore.logout()
+        else hasValidAuth = true
+      })
+    )
+  }
+
+  if (githubStore.auth.isAuthenticated) {
+    validationTasks.push(
+      githubStore.service.validateToken().then(isValid => {
+        if (!isValid) githubStore.logout()
+        else hasValidAuth = true
+      })
+    )
+  }
+
+  if (azureStore.auth.isAuthenticated) {
+    validationTasks.push(
+      azureStore.service.validateToken().then(isValid => {
+        if (!isValid) azureStore.logout()
+        else hasValidAuth = true
+      })
+    )
+  }
+
+  // Wait for all validations
+  await Promise.all(validationTasks)
+
+  // If no valid auth, redirect to login
+  if (!hasValidAuth) {
     router.push('/login')
     return
   }
 
-  if (gitlabStore.auth.isAuthenticated) {
-    gitlabStore.fetchRepositories()
-  }
+  // Fetch repositories from valid providers
+  const fetchTasks = []
+  if (gitlabStore.auth.isAuthenticated) fetchTasks.push(gitlabStore.fetchRepositories())
+  if (githubStore.auth.isAuthenticated) fetchTasks.push(githubStore.fetchRepositories())
+  if (azureStore.auth.isAuthenticated) fetchTasks.push(azureStore.fetchRepositories())
 
-  if (githubStore.auth.isAuthenticated) {
-    githubStore.fetchRepositories()
-  }
-
-  if (azureStore.auth.isAuthenticated) {
-    azureStore.fetchRepositories()
+  try {
+    await Promise.all(fetchTasks)
+  } catch (error) {
+    console.error('Error fetching repositories:', error)
   }
 })
+
 </script>

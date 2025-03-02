@@ -7,11 +7,18 @@ const DEFAULT_GITLAB_URL = 'https://gitlab.com'
 const gitlabService = new GitlabService()
 
 export const useGitlabStore = defineStore('gitlab', () => {
-  const auth = ref<GitlabAuth>({
+  const storedAuth = JSON.parse(localStorage.getItem('gitlab_auth') || 'null')
+  const auth = ref<GitlabAuth>(storedAuth || {
     token: '',
     url: DEFAULT_GITLAB_URL,
     isAuthenticated: false
   })
+
+  // Restore service state if auth exists
+  if (storedAuth?.isAuthenticated) {
+    gitlabService.setBaseUrl(storedAuth.url)
+    gitlabService.setToken(storedAuth.token)
+  }
 
   const repositories = ref<Repository[]>([])
   const loading = ref(false)
@@ -30,20 +37,24 @@ export const useGitlabStore = defineStore('gitlab', () => {
         throw new Error('Invalid token')
       }
 
-      auth.value = {
+      const newAuth = {
         token,
         url,
         isAuthenticated: true
       }
+      auth.value = newAuth
+      localStorage.setItem('gitlab_auth', JSON.stringify(newAuth))
       
       await fetchRepositories()
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Authentication failed'
-      auth.value = {
+      const resetAuth = {
         token: '',
         url: DEFAULT_GITLAB_URL,
         isAuthenticated: false
       }
+      auth.value = resetAuth
+      localStorage.setItem('gitlab_auth', JSON.stringify(resetAuth))
     } finally {
       loading.value = false
     }
@@ -66,11 +77,12 @@ export const useGitlabStore = defineStore('gitlab', () => {
   }
 
   function logout() {
-    auth.value = {
-      token: '',
-      url: DEFAULT_GITLAB_URL,
+    const newAuth = {
+      ...auth.value,
       isAuthenticated: false
     }
+    auth.value = newAuth
+    localStorage.setItem('gitlab_auth', JSON.stringify(newAuth))
     repositories.value = []
   }
 

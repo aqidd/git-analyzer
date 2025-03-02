@@ -6,10 +6,16 @@ import { GithubService } from '@/services/github'
 const githubService = new GithubService()
 
 export const useGithubStore = defineStore('github', () => {
-  const auth = ref<GithubAuth>({
+  const storedAuth = JSON.parse(localStorage.getItem('github_auth') || 'null')
+  const auth = ref<GithubAuth>(storedAuth || {
     token: '',
     isAuthenticated: false
   })
+
+  // Restore service state if auth exists
+  if (storedAuth?.isAuthenticated) {
+    githubService.setToken(storedAuth.token)
+  }
 
   const repositories = ref<Repository[]>([])
   const loading = ref(false)
@@ -27,18 +33,22 @@ export const useGithubStore = defineStore('github', () => {
         throw new Error('Invalid token')
       }
 
-      auth.value = {
+      const newAuth = {
         token,
         isAuthenticated: true
       }
+      auth.value = newAuth
+      localStorage.setItem('github_auth', JSON.stringify(newAuth))
       
       await fetchRepositories()
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Authentication failed'
-      auth.value = {
+      const resetAuth = {
         token: '',
         isAuthenticated: false
       }
+      auth.value = resetAuth
+      localStorage.setItem('github_auth', JSON.stringify(resetAuth))
     } finally {
       loading.value = false
     }
@@ -61,10 +71,12 @@ export const useGithubStore = defineStore('github', () => {
   }
 
   function logout() {
-    auth.value = {
-      token: '',
+    const newAuth = {
+      ...auth.value,
       isAuthenticated: false
     }
+    auth.value = newAuth
+    localStorage.setItem('github_auth', JSON.stringify(newAuth))
     repositories.value = []
   }
 

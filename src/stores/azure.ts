@@ -6,11 +6,18 @@ import { AzureService } from '@/services/azure'
 const azureService = new AzureService()
 
 export const useAzureStore = defineStore('azure', () => {
-  const auth = ref<AzureAuth>({
+  const storedAuth = JSON.parse(localStorage.getItem('azure_auth') || 'null')
+  const auth = ref<AzureAuth>(storedAuth || {
     token: '',
     organization: '',
     isAuthenticated: false
   })
+
+  // Restore service state if auth exists
+  if (storedAuth?.isAuthenticated) {
+    azureService.setOrganization(storedAuth.organization)
+    azureService.setToken(storedAuth.token)
+  }
 
   const repositories = ref<Repository[]>([])
   const loading = ref(false)
@@ -29,20 +36,24 @@ export const useAzureStore = defineStore('azure', () => {
         throw new Error('Invalid token')
       }
 
-      auth.value = {
+      const newAuth = {
         token,
         organization,
         isAuthenticated: true
       }
+      auth.value = newAuth
+      localStorage.setItem('azure_auth', JSON.stringify(newAuth))
       
       await fetchRepositories()
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Authentication failed'
-      auth.value = {
+      const resetAuth = {
         token: '',
         organization: '',
         isAuthenticated: false
       }
+      auth.value = resetAuth
+      localStorage.setItem('azure_auth', JSON.stringify(resetAuth))
     } finally {
       loading.value = false
     }
@@ -65,11 +76,12 @@ export const useAzureStore = defineStore('azure', () => {
   }
 
   function logout() {
-    auth.value = {
-      token: '',
-      organization: '',
+    const newAuth = {
+      ...auth.value,
       isAuthenticated: false
     }
+    auth.value = newAuth
+    localStorage.setItem('azure_auth', JSON.stringify(newAuth))
     repositories.value = []
     error.value = null
   }

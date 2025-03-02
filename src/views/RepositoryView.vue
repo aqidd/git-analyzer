@@ -258,7 +258,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import { useGitlabStore } from '@/stores/gitlab'
 import { useGithubStore } from '@/stores/github'
@@ -277,6 +277,7 @@ import type { Repository as AzureRepository } from '@/types/azure'
 type Repository = GitLabRepository | GitHubRepository | AzureRepository
 
 const route = useRoute()
+const router = useRouter()
 const gitlabStore = useGitlabStore()
 const githubStore = useGithubStore()
 const azureStore = useAzureStore()
@@ -433,6 +434,12 @@ const loadData = async () => {
 }
 
 onMounted(async () => {
+  // Check if any provider is authenticated
+  if (!gitlabStore.auth.isAuthenticated && !githubStore.auth.isAuthenticated && !azureStore.auth.isAuthenticated) {
+    router.push('/login')
+    return
+  }
+
   await loadData()
 })
 </script>
