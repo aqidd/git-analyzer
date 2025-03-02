@@ -219,33 +219,55 @@
             enter-to="opacity-100 scale-100" leave="duration-200 ease-in" leave-from="opacity-100 scale-100"
             leave-to="opacity-0 scale-95">
             <DialogPanel
-              class="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all dark:bg-gray-800">
+              class="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all dark:bg-gray-800">
               <DialogTitle as="h3" class="text-lg font-medium leading-6 text-gray-900 dark:text-white">
                 Repository Health Metrics
               </DialogTitle>
               <div class="mt-4 space-y-4">
                 <div v-for="metric in healthMetrics" :key="metric.name"
                   class="rounded-lg bg-gray-50 p-4 dark:bg-gray-700">
-                  <h4 class="font-medium text-gray-900 dark:text-white">{{ metric.name }}</h4>
-                  <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ metric.description }}</p>
-                  <div class="mt-2 space-y-1">
-                    <div class="flex items-center gap-2">
-                      <span class="text-sm font-medium text-green-600 dark:text-green-400">Good:</span>
-                      <span class="text-sm text-gray-600 dark:text-gray-300">{{ metric.good }}</span>
+                  <div class="flex items-center justify-between">
+                    <h4 class="font-medium text-gray-900 dark:text-white">{{ metric.name }}</h4>
+                    <span :class="[
+                      'px-2 py-1 text-xs font-medium rounded-full',
+                      metric.implementation.startsWith('✓')
+                        ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
+                        : metric.implementation.startsWith('⚠')
+                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
+                          : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
+                    ]">
+                      {{ metric.implementation.split(' ')[0] }} <!-- Show just the status icon -->
+                    </span>
+                  </div>
+                  <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ metric.description }}</p>
+                  
+                  <!-- Implementation Details -->
+                  <div class="mt-3 rounded bg-gray-100 p-3 dark:bg-gray-600">
+                    <p class="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-line">
+                      {{ metric.implementation.split('\n').slice(1).join('\n') }} <!-- Show implementation details without status -->
+                    </p>
+                  </div>
+
+                  <!-- Good/Bad Criteria -->
+                  <div class="mt-3 grid grid-cols-2 gap-3">
+                    <div class="rounded bg-green-50 p-2 dark:bg-green-900/30">
+                      <span class="text-xs font-medium text-green-700 dark:text-green-300">Good Criteria</span>
+                      <p class="mt-1 text-sm text-green-600 dark:text-green-200">{{ metric.good }}</p>
                     </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-sm font-medium text-red-600 dark:text-red-400">Bad:</span>
-                      <span class="text-sm text-gray-600 dark:text-gray-300">{{ metric.bad }}</span>
+                    <div class="rounded bg-red-50 p-2 dark:bg-red-900/30">
+                      <span class="text-xs font-medium text-red-700 dark:text-red-300">Bad Criteria</span>
+                      <p class="mt-1 text-sm text-red-600 dark:text-red-200">{{ metric.bad }}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div class="mt-6">
+              <div class="mt-6 flex justify-end">
                 <button type="button"
-                  class="inline-flex justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                  class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 transition-colors"
                   @click="showMetricsInfo = false">
-                  Got it!
+                  <span class="mr-2">Close</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
               </div>
             </DialogPanel>
@@ -291,30 +313,70 @@ const files = ref<RepositoryFile[]>([])
 const branches = ref<Branch[]>([])
 const branchStats = ref<any>(null)
 
+/**
+ * Health metrics configuration and thresholds.
+ * Each metric corresponds to one or more HealthMetricCard components in the UI.
+ * Current Implementation Status:
+ * ✓ - Fully Implemented
+ * ⚠ - Partially Implemented
+ * ⨯ - Not Yet Implemented
+ */
 const healthMetrics = [
   {
     name: 'Code Activity',
-    description: 'Measures the frequency of code changes in the repository.',
-    good: 'More than 1 commit per day indicates active development.',
-    bad: 'Less than 1 commit per day may indicate a stagnant project.'
-  },
-  {
-    name: 'Branch Health',
-    description: 'Evaluates the maintenance of branches in the repository.',
-    good: 'Less than 30% of branches are stagnant (no commits in 30 days).',
-    bad: 'More than 30% stagnant branches indicates need for cleanup.'
+    description: 'Measures the frequency and consistency of code changes in the repository.',
+    implementation: '✓ Implemented via commitStats with three metrics:\n- Daily commit rate (commits/day)\n- Detailed commits count\n- Code growth ratio',
+    good: 'Daily commit rate ≥1, has detailed commits, code growth ratio between 0.5-2',
+    bad: 'Daily commit rate <1, no detailed commits, or unbalanced code growth'
   },
   {
     name: 'Pipeline Health',
-    description: 'Assesses the reliability of your CI/CD pipelines.',
-    good: 'Success rate above 80% with frequent deployments.',
-    bad: 'Success rate below 80% or infrequent deployments.'
+    description: 'Assesses CI/CD pipeline efficiency and reliability.',
+    implementation: '✓ Implemented via pipelineStats with four metrics:\n- Successful builds count\n- Failed builds count\n- Build success rate (%)\n- Deployment frequency',
+    good: 'Success rate ≥80%, has successful builds, deployment frequency >0',
+    bad: 'Success rate <80%, has failed builds, or no deployments'
   },
   {
     name: 'Team Health',
-    description: 'Analyzes the distribution of work across the team.',
-    good: 'Higher bus factor and balanced contributions (Gini < 0.4).',
-    bad: 'Low bus factor or concentrated contributions (Gini > 0.4).'
+    description: 'Analyzes work distribution and collaboration patterns.',
+    implementation: '✓ Implemented via contributorStats with three metrics:\n- Bus factor (>2 is healthy)\n- Top contributor percentage\n- Gini coefficient (<0.4 is healthy)',
+    good: 'Bus factor >2, balanced contributions (Gini <0.4)',
+    bad: 'Bus factor ≤2, or concentrated contributions (Gini ≥0.4)'
+  },
+  {
+    name: 'Branch Health',
+    description: 'Evaluates branch management and maintenance.',
+    implementation: '✓ Implemented via branchStats with metrics:\n- Healthy vs total branches ratio\n- Stagnant branch count\n- Days since last commit per branch',
+    good: 'Stagnant branches ≤30% of total, regular merges to main',
+    bad: 'Stagnant branches >30% of total, inactive branches >30 days'
+  },
+  {
+    name: 'Code Quality',
+    description: 'Evaluates code maintainability and test coverage.',
+    implementation: '⨯ Not yet implemented. Planned metrics:\n- Test coverage percentage\n- Cyclomatic complexity\n- Code duplication percentage\n- Style violations count',
+    good: 'Test coverage >80%, complexity <10, duplication <5%',
+    bad: 'Test coverage <80%, complexity >10, duplication >5%'
+  },
+  {
+    name: 'PR Velocity',
+    description: 'Measures pull request workflow efficiency.',
+    implementation: '⨯ Not yet implemented. Planned metrics:\n- Average review time\n- Merge success rate\n- PR size distribution\n- Review participation rate',
+    good: 'Review time <24h, merge rate >90%, PRs <400 lines',
+    bad: 'Review time >24h, merge rate <90%, PRs >400 lines'
+  },
+  {
+    name: 'Documentation Health',
+    description: 'Assesses documentation quality and currency.',
+    implementation: '⨯ Not yet implemented. Planned metrics:\n- README freshness\n- API documentation coverage\n- Inline documentation ratio\n- Documentation update frequency',
+    good: 'Current docs, clear guidelines, regular updates',
+    bad: 'Outdated docs, missing guidelines, infrequent updates'
+  },
+  {
+    name: 'Security Health',
+    description: 'Evaluates repository security measures.',
+    implementation: '⨯ Not yet implemented. Planned metrics:\n- Vulnerability count\n- Average remediation time\n- Dependency freshness\n- Security policy compliance',
+    good: 'No critical vulnerabilities, quick fixes, current deps',
+    bad: 'Open vulnerabilities, slow fixes, outdated deps'
   }
 ]
 
