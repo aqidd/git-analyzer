@@ -68,13 +68,13 @@
               :isHealthy="commitStats.dailyCommitRate >= 1"
             />
             <!-- 2. Number of detailed commit -->
-            <div class="mb-6">
-              <div class="rounded-lg bg-purple-50 p-4 dark:bg-purple-900">
-                <p class="text-sm text-purple-600 dark:text-purple-200">Detailed Commits</p>
-                <p class="text-2xl font-bold text-purple-700 dark:text-purple-100">{{
-                  commitStats.commitWithLongDescription }}</p>
-              </div>
-            </div>
+             <HealthMetricCard
+              title="Detailed Commits"
+              :status="commitStats.commitWithLongDescription > 0 ? 'Active' : 'Low Activity'"
+              :value="commitStats.commitWithLongDescription"
+              unit="commits"
+              :isHealthy="commitStats.commitWithLongDescription > 0"
+            />
             <!-- 3. Code Churn -->
             <HealthMetricCard
               title="Code Growth"
@@ -142,7 +142,7 @@
               unit="healthy branches"
               :isHealthy="(branchStats?.healthyBranchCount / branchStats?.totalBranches) > 0.7"
             />
-            
+
             <HealthMetricCard
               title="Stagnant Branches"
               :status="(branchStats?.stagnantBranchCount / branches.length) <= 0.3 ? 'Healthy' : 'Needs Cleanup'"

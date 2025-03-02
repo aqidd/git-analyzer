@@ -7,7 +7,7 @@
 <template>
   <div class="space-y-4">
     <!-- Tab Navigation -->
-    <div class="border-b border-gray-200 dark:border-gray-700">
+    <div class="border-b border-gray-200 dark:border-gray-700 m-4">
       <nav class="-mb-px flex space-x-8">
         <button
           v-for="tab in tabs"
@@ -42,10 +42,10 @@
     </div>
 
     <!-- Content -->
-    <div class="min-h-[400px]">
+    <div class="min-h-[400px] p-4">
       <!-- Commits -->
-      <div v-if="currentTab === 'commits'" class="space-y-4">
-        <div v-for="commit in paginatedItems.commits" :key="commit.id" class="flex items-start justify-between rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+      <div v-if="currentTab === 'commits'" class="space-y-4 ">
+        <div v-for="commit in paginatedItems.commits" :key="commit.id" class="flex items-start justify-between rounded-lg bg-white p-4 border border-gray-200 dark:border-gray-700 dark:bg-gray-800">
           <div>
             <p class="font-medium text-gray-900 dark:text-white">{{ commit.message }}</p>
             <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -58,7 +58,7 @@
 
       <!-- Branches -->
       <div v-if="currentTab === 'branches'" class="space-y-4">
-        <div v-for="branch in paginatedItems.branches" :key="branch.name" class="flex items-center justify-between rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+        <div v-for="branch in paginatedItems.branches" :key="branch.name" class="flex items-start justify-between rounded-lg bg-white p-4 border border-gray-200 dark:border-gray-700 dark:bg-gray-800">
           <div>
             <div class="flex items-center gap-2">
               <span class="font-medium text-gray-900 dark:text-white">{{ branch.name }}</span>
@@ -73,7 +73,7 @@
 
       <!-- Contributors -->
       <div v-if="currentTab === 'contributors'" class="space-y-4">
-        <div v-for="contributor in paginatedItems.contributors" :key="contributor.id" class="flex items-center space-x-4 rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+        <div v-for="contributor in paginatedItems.contributors" :key="contributor.id" class="flex items-start justify-between rounded-lg bg-white p-4 border border-gray-200 dark:border-gray-700 dark:bg-gray-800">
           <img v-if="contributor.avatar_url" :src="contributor.avatar_url" :alt="contributor.name" class="h-10 w-10 rounded-full" />
           <div>
             <p class="font-medium text-gray-900 dark:text-white">{{ contributor.name }}</p>
@@ -84,7 +84,7 @@
 
       <!-- Pipelines -->
       <div v-if="currentTab === 'pipelines'" class="space-y-4">
-        <div v-for="pipeline in paginatedItems.pipelines" :key="pipeline.id" class="flex items-center justify-between rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+        <div v-for="pipeline in paginatedItems.pipelines" :key="pipeline.id" class="flex items-start justify-between rounded-lg bg-white p-4 border border-gray-200 dark:border-gray-700 dark:bg-gray-800">
           <div>
             <p class="font-medium text-gray-900 dark:text-white">{{ pipeline.ref }}</p>
             <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -97,7 +97,7 @@
     </div>
 
     <!-- Pagination -->
-    <div class="mt-6 flex items-center justify-between border-t border-gray-200 pt-6 dark:border-gray-700">
+    <div class="p-4 flex items-center justify-between border-t border-gray-200 pt-6 dark:border-gray-700">
       <div class="flex flex-1 justify-between sm:hidden">
         <button
           @click="currentPage--"
