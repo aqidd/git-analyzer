@@ -36,7 +36,7 @@
                 : 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-400',
               'ml-3 hidden rounded-full py-0.5 px-2.5 text-xs font-medium md:inline-block'
             ]"
-          >{{ items[tab.key].length }}</span>
+          >{{ items[tab.key]?.length || 0 }}</span>
         </button>
       </nav>
     </div>
@@ -78,6 +78,41 @@
           <div>
             <p class="font-medium text-gray-900 dark:text-white">{{ contributor.name }}</p>
             <p class="text-sm text-gray-500 dark:text-gray-400">{{ contributor.commits }} commits</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pull Requests -->
+      <div v-if="currentTab === 'pullRequests'" class="space-y-4">
+        <div v-for="pr in paginatedItems.pullRequests" :key="pr.id" class="flex items-start justify-between rounded-lg bg-white p-4 border border-gray-200 dark:border-gray-700 dark:bg-gray-800">
+          <div class="flex-grow">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-medium text-gray-900 dark:text-white">{{ pr.title }}</span>
+              <span :class="[
+                'rounded-full px-2 py-0.5 text-xs font-medium',
+                pr.state === 'open' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                pr.state === 'merged' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+              ]">
+                {{ pr.state.charAt(0).toUpperCase() + pr.state.slice(1) }}
+              </span>
+              <span v-if="pr.isDraft" class="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-800 dark:bg-gray-900 dark:text-gray-200">Draft</span>
+            </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              #{{ pr.id }} by {{ pr.author.name }} · {{ pr.reviewCount }} reviews · {{ pr.comments }} comments
+            </p>
+            <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              <span class="inline-flex items-center gap-1">
+                <span class="text-green-600 dark:text-green-400">+{{ pr.additions }}</span>
+                <span class="text-red-600 dark:text-red-400">-{{ pr.deletions }}</span>
+                · {{ pr.changedFiles }} files
+              </span>
+            </div>
+          </div>
+          <div class="text-right text-sm text-gray-500 dark:text-gray-400">
+            <div>Created {{ new Date(pr.createdAt).toLocaleDateString() }}</div>
+            <div v-if="pr.timeToMerge" class="text-green-600 dark:text-green-400">Merged in {{ Math.round(pr.timeToMerge) }}h</div>
+            <div v-if="pr.timeToFirstReview" class="text-blue-600 dark:text-blue-400">First review in {{ Math.round(pr.timeToFirstReview) }}h</div>
           </div>
         </div>
       </div>
@@ -170,19 +205,31 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { Commit, Branch, Pipeline, Contributor } from '@/types/repository'
+import type { Commit, Branch, Pipeline, Contributor, PullRequest } from '@/types/repository'
+import { GitMergeIcon, GitCommitIcon, GitBranchIcon, UsersIcon, RocketIcon } from 'lucide-vue-next'
+
+// Updated: Added pull requests tab with proper icons
 
 interface Props {
-  commits: Commit[]
-  branches: Branch[]
-  pipelines: Pipeline[]
-  contributors: Contributor[]
+  commits?: Commit[]
+  branches?: Branch[]
+  pipelines?: Pipeline[]
+  contributors?: Contributor[]
+  pullRequests?: PullRequest[]
 }
 
 const props = defineProps<Props>()
 const itemsPerPage = 25
 const currentPage = ref(1)
 const currentTab = ref('commits')
+
+const tabs = [
+  { key: 'commits', label: 'Commits', icon: GitCommitIcon },
+  { key: 'branches', label: 'Branches', icon: GitBranchIcon },
+  { key: 'pullRequests', label: 'Pull Requests', icon: GitMergeIcon },
+  { key: 'contributors', label: 'Contributors', icon: UsersIcon },
+  { key: 'pipelines', label: 'Pipelines', icon: RocketIcon }
+]
 
 // Computed property for displayed page numbers
 const displayedPages = computed(() => {
@@ -221,42 +268,14 @@ const displayedPages = computed(() => {
   return pages
 })
 
-const tabs = [
-  { 
-    key: 'commits',
-    label: 'Commits',
-    icon: {
-      template: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><line x1="3" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="21" y2="12"/></svg>`
-    }
-  },
-  { 
-    key: 'branches',
-    label: 'Branches',
-    icon: {
-      template: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>`
-    }
-  },
-  { 
-    key: 'pipelines',
-    label: 'Pipelines',
-    icon: {
-      template: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8l4-16l3 8h4"/></svg>`
-    }
-  },
-  { 
-    key: 'contributors',
-    label: 'Contributors',
-    icon: {
-      template: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`
-    }
-  }
-]
+
 
 const items = computed(() => ({
-  commits: props.commits,
-  branches: props.branches,
-  pipelines: props.pipelines,
-  contributors: props.contributors
+  commits: props.commits || [],
+  branches: props.branches || [],
+  pipelines: props.pipelines || [],
+  contributors: props.contributors || [],
+  pullRequests: props.pullRequests || []
 }))
 
 const totalItems = computed(() => items.value[currentTab.value]?.length || 0)

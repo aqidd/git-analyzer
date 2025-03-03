@@ -197,8 +197,13 @@
 
         <!-- Repository Details -->
         <section class="rounded-lg bg-white shadow dark:bg-gray-800">
-          <PaginatedDetails :commits="commits" :branches="branches" :pipelines="pipelines"
-            :contributors="contributors" />
+          <PaginatedDetails 
+            :commits="commits" 
+            :branches="branches" 
+            :pipelines="pipelines"
+            :contributors="contributors" 
+            :pull-requests="pullRequests" 
+          />
         </section>
       </div>
 
@@ -288,7 +293,7 @@ import { useAzureStore } from '@/stores/azure'
 import { Analyzer } from '@/services/analyzer'
 import HealthMetricCard from '@/components/HealthMetricCard.vue'
 import PaginatedDetails from '@/components/PaginatedDetails.vue'
-import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, Branch } from '@/types/repository'
+import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, Branch, PullRequest } from '@/types/repository'
 import type { Repository as GitLabRepository } from '@/types/gitlab'
 import type { Repository as GitHubRepository } from '@/types/github'
 import type { Repository as AzureRepository } from '@/types/azure'
@@ -308,6 +313,7 @@ const showMetricsInfo = ref(false)
 const repository = ref<Repository | null>(null)
 const commits = ref<Commit[]>([])
 const pipelines = ref<Pipeline[]>([])
+const pullRequests = ref<PullRequest[]>([])
 const contributors = ref<Contributor[]>([])
 const files = ref<RepositoryFile[]>([])
 const branches = ref<Branch[]>([])
@@ -432,6 +438,7 @@ const formatSize = (bytes: number) => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
 }
 
+// Updated: Added pull requests fetching
 const loadData = async () => {
   const { id, type } = route.params
   error.value = null
@@ -448,6 +455,7 @@ const loadData = async () => {
       contributors.value = await gitlabStore.service.getContributors(projectId, timeFilter.value)
       files.value = await gitlabStore.service.getFiles(projectId)
       branches.value = await gitlabStore.service.getBranches(String(id), String(id))
+      pullRequests.value = await gitlabStore.service.getPullRequests(projectId, timeFilter.value)
       branchStats.value = analyzer.analyzeBranches(branches.value)
     } else if (type === 'github') {
       if (!githubStore.service) {
@@ -462,6 +470,7 @@ const loadData = async () => {
       contributors.value = await githubStore.service.getContributors(owner, repo, timeFilter.value)
       files.value = await githubStore.service.getFiles(owner, repo)
       branches.value = await githubStore.service.getBranches(owner, repo)
+      pullRequests.value = await githubStore.service.getPullRequests(owner, repo, timeFilter.value)
       branchStats.value = analyzer.analyzeBranches(branches.value)
     } else if (type === 'azure') {
       if (!azureStore.auth.isAuthenticated) {
@@ -479,6 +488,7 @@ const loadData = async () => {
       contributors.value = await azureStore.service.getContributors(projectId, id)
       files.value = await azureStore.service.getFiles(projectId, id)
       branches.value = await azureStore.service.getBranches(projectId, id)
+      pullRequests.value = await azureStore.service.getPullRequests(projectId, id, timeFilter.value)
       branchStats.value = analyzer.analyzeBranches(branches.value)
     }
   } catch (e) {
@@ -487,6 +497,7 @@ const loadData = async () => {
     pipelines.value = []
     contributors.value = []
     files.value = []
+    pullRequests.value = []
   } finally {
     loading.value = false
   }

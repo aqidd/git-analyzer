@@ -11,4 +11,5 @@ export abstract class GitService {
     abstract getContributors(owner: string, repo: string, timeFilter: TimeFilter): Promise<Contributor[]> 
     abstract getFiles(owner: string, repo: string, path: string): Promise<RepositoryFile[]> 
     abstract getBranches(owner: string, repo: string): Promise<Branch[]>
+    abstract getPullRequests(owner: string, repo: string, timeFilter: TimeFilter): Promise<PullRequest[]>
 }

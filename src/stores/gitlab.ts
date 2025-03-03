@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { GitlabAuth, Repository } from '@/types/gitlab'
+import type { PullRequest, TimeFilter } from '@/types/repository'
 import { GitlabService } from '@/services/gitlab'
 
 const DEFAULT_GITLAB_URL = 'https://gitlab.com'
@@ -23,6 +24,7 @@ export const useGitlabStore = defineStore('gitlab', () => {
   const repositories = ref<Repository[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const pullRequests = ref<PullRequest[]>([])
 
   async function login(url: string = DEFAULT_GITLAB_URL, token: string) {
     loading.value = true
@@ -86,6 +88,22 @@ export const useGitlabStore = defineStore('gitlab', () => {
     repositories.value = []
   }
 
+  async function fetchPullRequests(owner: string, repo: string, timeFilter: TimeFilter) {
+    if (!auth.value.isAuthenticated) return
+    
+    loading.value = true
+    error.value = null
+    
+    try {
+      pullRequests.value = await gitlabService.getPullRequests(owner, repo, timeFilter)
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to fetch pull requests'
+      pullRequests.value = []
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     auth,
     repositories,
@@ -94,6 +112,8 @@ export const useGitlabStore = defineStore('gitlab', () => {
     login,
     logout,
     fetchRepositories,
+    fetchPullRequests,
+    pullRequests,
     service: gitlabService
   }
 })

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { AzureAuth, Repository } from '@/types/azure'
+import type { PullRequest } from '@/types/repository'
 import { AzureService } from '@/services/azure'
 
 const azureService = new AzureService()
@@ -22,6 +23,7 @@ export const useAzureStore = defineStore('azure', () => {
   const repositories = ref<Repository[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const pullRequests = ref<PullRequest[]>([])
 
   async function login(organization: string, token: string) {
     loading.value = true
@@ -86,6 +88,22 @@ export const useAzureStore = defineStore('azure', () => {
     error.value = null
   }
 
+  async function fetchPullRequests(owner: string, repo: string, timeFilter: TimeFilter) {
+    if (!auth.value.isAuthenticated) return
+    
+    loading.value = true
+    error.value = null
+    
+    try {
+      pullRequests.value = await azureService.getPullRequests(owner, repo, timeFilter)
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to fetch pull requests'
+      pullRequests.value = []
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     auth,
     repositories,
@@ -94,6 +112,8 @@ export const useAzureStore = defineStore('azure', () => {
     login,
     logout,
     fetchRepositories,
+    fetchPullRequests,
+    pullRequests,
     service: azureService
   }
 })

@@ -1,5 +1,5 @@
 import type { Repository, Project, BranchStats, PullRequest, WorkItem, RepositoryPolicy, RepositoryAnalytics } from '@/types/azure'
-import type { Commit, Pipeline, Contributor, RepositoryFile, TimeFilter } from '@/types/repository'
+import type { Commit, Pipeline, Contributor, RepositoryFile, TimeFilter, Branch } from '@/types/repository'
 import { GitService } from './git'
 
 interface ApiResponse<T> {
@@ -202,7 +202,7 @@ export class AzureService extends GitService {
       deletions: number
       lastContribution: string
     }>()
-    
+
     data.value.forEach(commit => {
       const { name, email, date } = commit.author
       const key = `${name}:${email}`
@@ -224,7 +224,14 @@ export class AzureService extends GitService {
       contributorMap.set(key, existing)
     })
     
-    return Array.from(contributorMap.values())
+    return Array.from(contributorMap.entries()).map(([_, value], index) => ({
+      id: index + 1,
+      name: value.name,
+      email: value.email,
+      commits: value.commits,
+      additions: value.additions,
+      deletions: value.deletions
+    }))
   }
 
   async getBranches(projectId: string, repoId: string): Promise<Branch[]> {
@@ -245,84 +252,74 @@ export class AzureService extends GitService {
     const project = await this.request<{ name: string }>(`projects/${projectId}`)
     const data = await this.request<ApiResponse<any>>(`git/repositories/${repoId}/items?recursionLevel=full`, project.name)
     return data.value.map(file => ({
-      name: file.path.split('/').pop() || '',
       path: file.path,
       type: file.gitObjectType?.toLowerCase() || 'file',
       size: file.size || 0,
-      lastModified: file.lastModifiedDate,
-      contentUrl: file.url
-    }))
-  }
-
-  async getPolicies(projectId: string, repoId: string): Promise<RepositoryPolicy[]> {
-    const data = await this.request<ApiResponse<any>>(`${projectId}/git/policy/configurations?repositoryId=${repoId}`)
-    return data.value.map(policy => ({
-      id: policy.id,
-      type: policy.type.displayName,
-      isEnabled: policy.isEnabled,
-      isBlocking: policy.isBlocking,
-      settings: policy.settings
+      last_modified: file.lastModifiedDate
     }))
   }
 
   async getPullRequests(projectId: string, repoId: string, timeFilter: TimeFilter): Promise<PullRequest[]> {
+    const project = await this.request<{ name: string }>(`projects/${projectId}`)
     const queryParams = new URLSearchParams({
-      searchCriteria: JSON.stringify({
-        status: 'all',
-        creatorId: '',
-        includeLinks: true,
-        sourceRefName: '',
-        targetRefName: '',
-        includeCommits: true,
-        fromDate: timeFilter.startDate,
-        toDate: timeFilter.endDate
-      })
+      'searchCriteria.status': 'all',
+      'searchCriteria.creationDate': this.formatDate(timeFilter.startDate),
+      '$top': '100'
     }).toString()
 
-    const data = await this.request<ApiResponse<any>>(`${projectId}/git/repositories/${repoId}/pullrequests?${queryParams}`)
-    return data.value.map(pr => ({
-      id: pr.pullRequestId,
-      title: pr.title,
-      description: pr.description,
-      status: pr.status,
-      createdBy: pr.createdBy.displayName,
-      creationDate: pr.creationDate,
-      lastUpdateTime: pr.lastUpdateTime,
-      sourceRef: pr.sourceRefName,
-      targetRef: pr.targetRefName,
-      mergeStatus: pr.mergeStatus,
-      isDraft: pr.isDraft,
-      reviewers: pr.reviewers.map((reviewer: any) => ({
-        displayName: reviewer.displayName,
-        vote: reviewer.vote,
-        isRequired: reviewer.isRequired
-      }))
-    }))
-  }
+    const data = await this.request<ApiResponse<any>>(`git/repositories/${repoId}/pullrequests?${queryParams}`, project.name)
+    
+    return await Promise.all(data.value.map(async (pr: any) => {
+      // Get PR details including reviews and comments
+      const details = await this.request<any>(`git/repositories/${repoId}/pullrequests/${pr.pullRequestId}`, project.name)
+      const threads = await this.request<ApiResponse<any>>(`git/repositories/${repoId}/pullrequests/${pr.pullRequestId}/threads`, project.name)
+      
+      // Calculate review times
+      const reviews = threads.value.filter((thread: any) => thread.status === 'active' && thread.comments?.length > 0)
+      const firstReview = reviews.length > 0 ? 
+        reviews.reduce((earliest: any, current: any) => {
+          const currentDate = new Date(current.comments[0].publishedDate)
+          return earliest ? (currentDate < new Date(earliest) ? currentDate : earliest) : currentDate
+        }, null) :
+        null
 
-  async getAnalytics(projectId: string, repoId: string, timeFilter: TimeFilter): Promise<RepositoryAnalytics[]> {
-    const data = await this.request<ApiResponse<any>>(`${projectId}/git/repositories/${repoId}/stats/activity`)
-    return data.value.map(stat => ({
-      date: stat.date,
-      commits: stat.commits,
-      activeUsers: stat.activeUsers,
-      pullRequests: stat.pullRequests,
-      workItems: stat.workItems
-    }))
-  }
+      const timeToFirstReview = firstReview ? 
+        (firstReview.getTime() - new Date(pr.creationDate).getTime()) / (1000 * 60 * 60) :
+        undefined
 
-  async getWorkItems(projectId: string, repoId: string): Promise<WorkItem[]> {
-    const data = await this.request<ApiResponse<any>>(`${projectId}/git/repositories/${repoId}/workitems`)
-    return data.value.map(item => ({
-      id: item.id,
-      title: item.title,
-      type: item.workItemType,
-      state: item.state,
-      assignedTo: item.assignedTo?.displayName,
-      createdDate: item.createdDate,
-      changedDate: item.changedDate,
-      priority: item.priority,
-      severity: item.severity
+      return {
+        id: pr.pullRequestId,
+        title: pr.title,
+        description: pr.description || '',
+        state: pr.status === 'completed' ? (pr.mergeStatus === 'succeeded' ? 'merged' : 'closed') : 'open',
+        createdAt: pr.creationDate,
+        updatedAt: details.lastMergeSourceCommit?.committer?.date || pr.creationDate,
+        mergedAt: pr.closedDate && pr.status === 'completed' && pr.mergeStatus === 'succeeded' ? pr.closedDate : undefined,
+        closedAt: pr.closedDate,
+        author: {
+          id: pr.createdBy.id,
+          name: pr.createdBy.displayName,
+          username: pr.createdBy.uniqueName
+        },
+        reviewers: pr.reviewers?.map((reviewer: any) => ({
+          id: reviewer.id,
+          name: reviewer.displayName,
+          username: reviewer.uniqueName
+        })) || [],
+        sourceBranch: pr.sourceRefName.replace('refs/heads/', ''),
+        targetBranch: pr.targetRefName.replace('refs/heads/', ''),
+        isDraft: pr.isDraft,
+        comments: threads.value.reduce((count: number, thread: any) => count + (thread.comments?.length || 0), 0),
+        reviewCount: reviews.length,
+        additions: details.lastMergeSourceCommit?.changeCounts?.Add || 0,
+        deletions: details.lastMergeSourceCommit?.changeCounts?.Delete || 0,
+        changedFiles: details.lastMergeSourceCommit?.changeCounts?.Edit || 0,
+        labels: pr.labels || [],
+        timeToMerge: pr.closedDate && pr.status === 'completed' && pr.mergeStatus === 'succeeded' ?
+          (new Date(pr.closedDate).getTime() - new Date(pr.creationDate).getTime()) / (1000 * 60 * 60) :
+          undefined,
+        timeToFirstReview
+      }
     }))
   }
 }

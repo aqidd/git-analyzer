@@ -1,5 +1,5 @@
 import type { Repository } from '@/types/github'
-import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile } from '@/types/repository'
+import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, PullRequest } from '@/types/repository'
 import { GitService } from './git'
 
 export class GithubService extends GitService {
@@ -144,5 +144,63 @@ export class GithubService extends GitService {
       size: data.size,
       last_modified: data.last_modified
     }]
+  }
+
+  async getPullRequests(owner: string, repo: string, timeFilter: TimeFilter): Promise<PullRequest[]> {
+    const { startDate, endDate } = timeFilter
+    const data = await this.request(
+      `/repos/${owner}/${repo}/pulls?state=all&sort=created&direction=desc&per_page=100`
+    )
+
+    const filteredPRs = data.filter((pr: any) => {
+      const createdAt = new Date(pr.created_at)
+      return createdAt >= new Date(startDate) && createdAt <= new Date(endDate)
+    })
+
+    return await Promise.all(filteredPRs.map(async (pr: any) => {
+      // Get PR reviews to calculate time to first review
+      const reviews = await this.request(`/repos/${owner}/${repo}/pulls/${pr.number}/reviews`)
+      const firstReview = reviews[0]
+      const timeToFirstReview = firstReview ? 
+        (new Date(firstReview.submitted_at).getTime() - new Date(pr.created_at).getTime()) / (1000 * 60 * 60) :
+        undefined
+
+      // Get PR details including file changes
+      const details = await this.request(`/repos/${owner}/${repo}/pulls/${pr.number}`)
+      
+      return {
+        id: pr.id,
+        title: pr.title,
+        description: pr.body || '',
+        state: pr.merged_at ? 'merged' : pr.state,
+        createdAt: pr.created_at,
+        updatedAt: pr.updated_at,
+        mergedAt: pr.merged_at,
+        closedAt: pr.closed_at,
+        author: {
+          id: pr.user.id,
+          name: pr.user.login,
+          username: pr.user.login
+        },
+        reviewers: pr.requested_reviewers?.map((reviewer: any) => ({
+          id: reviewer.id,
+          name: reviewer.login,
+          username: reviewer.login
+        })) || [],
+        sourceBranch: pr.head.ref,
+        targetBranch: pr.base.ref,
+        isDraft: pr.draft,
+        comments: pr.comments + (pr.review_comments || 0),
+        reviewCount: reviews.length,
+        additions: details.additions,
+        deletions: details.deletions,
+        changedFiles: details.changed_files,
+        labels: pr.labels.map((label: any) => label.name),
+        timeToMerge: pr.merged_at ? 
+          (new Date(pr.merged_at).getTime() - new Date(pr.created_at).getTime()) / (1000 * 60 * 60) :
+          undefined,
+        timeToFirstReview
+      }
+    }))
   }
 }

@@ -1,5 +1,5 @@
 import type { Repository } from '@/types/gitlab'
-import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile } from '@/types/repository'
+import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, PullRequest } from '@/types/repository'
 import { GitService } from './git'
 
 export class GitlabService extends GitService {
@@ -124,6 +124,53 @@ export class GitlabService extends GitService {
       type: file.type,
       size: file.size || 0,
       last_modified: file.last_commit_at
+    }))
+  }
+
+  async getPullRequests(projectId: number, timeFilter: TimeFilter): Promise<PullRequest[]> {
+    const { startDate, endDate } = timeFilter
+    const data = await this.request(
+      `/projects/${projectId}/merge_requests?created_after=${startDate}&created_before=${endDate}&per_page=100`
+    )
+
+    return await Promise.all(data.map(async (mr: any) => {
+      // Get additional details for each MR
+      const details = await this.request(`/projects/${projectId}/merge_requests/${mr.iid}`)
+      const timeToMerge = details.merged_at ? 
+        (new Date(details.merged_at).getTime() - new Date(details.created_at).getTime()) / (1000 * 60 * 60) : 
+        undefined
+
+      return {
+        id: mr.id,
+        title: mr.title,
+        description: mr.description || '',
+        state: mr.state === 'opened' ? 'open' : mr.state === 'merged' ? 'merged' : 'closed',
+        createdAt: mr.created_at,
+        updatedAt: mr.updated_at,
+        mergedAt: mr.merged_at,
+        closedAt: mr.closed_at,
+        author: {
+          id: mr.author.id,
+          name: mr.author.name,
+          username: mr.author.username
+        },
+        reviewers: mr.reviewers?.map((reviewer: any) => ({
+          id: reviewer.id,
+          name: reviewer.name,
+          username: reviewer.username
+        })) || [],
+        sourceBranch: mr.source_branch,
+        targetBranch: mr.target_branch,
+        isDraft: mr.work_in_progress,
+        comments: details.user_notes_count || 0,
+        reviewCount: details.user_notes_count || 0,
+        additions: details.changes_count || 0,
+        deletions: details.changes_count || 0,
+        changedFiles: details.changes_count || 0,
+        labels: mr.labels || [],
+        timeToMerge,
+        timeToFirstReview: undefined // GitLab API doesn't provide this directly
+      }
     }))
   }
 }

@@ -63,3 +63,38 @@ export interface Branch {
   lastCommitAuthor?: string
   protected?: boolean
 }
+
+/**
+ * Represents a pull request in a repository
+ */
+export interface PullRequest {
+  id: number | string
+  title: string
+  description: string
+  state: 'open' | 'closed' | 'merged'
+  createdAt: string
+  updatedAt: string
+  mergedAt?: string
+  closedAt?: string
+  author: {
+    id: number | string
+    name: string
+    username: string
+  }
+  reviewers?: Array<{
+    id: number | string
+    name: string
+    username: string
+  }>
+  sourceBranch: string
+  targetBranch: string
+  isDraft: boolean
+  comments: number
+  reviewCount: number
+  additions: number
+  deletions: number
+  changedFiles: number
+  labels: string[]
+  timeToMerge?: number // in hours
+  timeToFirstReview?: number // in hours
+}
