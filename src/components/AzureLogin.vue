@@ -98,7 +98,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useAzureStore } from '@/stores/azure'
+import { useAzureStore } from '@/stores/azure.store'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()

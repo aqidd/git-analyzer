@@ -81,7 +81,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useGithubStore } from '@/stores/github'
+import { useGithubStore } from '@/stores/github.store'
 
 const router = useRouter()
 const githubStore = useGithubStore()

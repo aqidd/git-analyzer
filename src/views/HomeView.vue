@@ -116,9 +116,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useGitlabStore } from '@/stores/gitlab'
-import { useGithubStore } from '@/stores/github'
-import { useAzureStore } from '@/stores/azure'
+import { useGitlabStore } from '@/stores/gitlab.store'
+import { useGithubStore } from '@/stores/github.store'
+import { useAzureStore } from '@/stores/azure.store'
 import RepositoryCard from '@/components/RepositoryCard.vue'
 import type { Repository as GitLabRepository } from '@/types/gitlab'
 import type { Repository as GitHubRepository } from '@/types/github'

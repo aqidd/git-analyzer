@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createTestingPinia } from '@pinia/testing'
 import GitHubLogin from '../GitHubLogin.vue'
-import { useGithubStore } from '@/stores/github'
+import { useGithubStore } from '@/stores/github.store'
 import { createRouter, createWebHistory } from 'vue-router'
 
 // Mock router

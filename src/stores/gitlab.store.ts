@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { GitlabAuth, Repository } from '@/types/gitlab'
 import type { PullRequest, TimeFilter } from '@/types/repository'
-import { GitlabService } from '@/services/gitlab'
+import { GitlabService } from '@/services/gitlab.service'
 
 const DEFAULT_GITLAB_URL = 'https://gitlab.com'
 const gitlabService = new GitlabService()

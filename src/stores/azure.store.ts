@@ -1,21 +1,23 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { GithubAuth, Repository } from '@/types/github'
-import type { PullRequest, TimeFilter } from '@/types/repository'
-import { GithubService } from '@/services/github'
+import type { AzureAuth, Repository } from '@/types/azure'
+import type { PullRequest } from '@/types/repository'
+import { AzureService } from '@/services/azure.service'
 
-const githubService = new GithubService()
+const azureService = new AzureService()
 
-export const useGithubStore = defineStore('github', () => {
-  const storedAuth = JSON.parse(localStorage.getItem('github_auth') || 'null')
-  const auth = ref<GithubAuth>(storedAuth || {
+export const useAzureStore = defineStore('azure', () => {
+  const storedAuth = JSON.parse(localStorage.getItem('azure_auth') || 'null')
+  const auth = ref<AzureAuth>(storedAuth || {
     token: '',
+    organization: '',
     isAuthenticated: false
   })
 
   // Restore service state if auth exists
   if (storedAuth?.isAuthenticated) {
-    githubService.setToken(storedAuth.token)
+    azureService.setOrganization(storedAuth.organization)
+    azureService.setToken(storedAuth.token)
   }
 
   const repositories = ref<Repository[]>([])
@@ -23,13 +25,14 @@ export const useGithubStore = defineStore('github', () => {
   const error = ref<string | null>(null)
   const pullRequests = ref<PullRequest[]>([])
 
-  async function login(token: string) {
+  async function login(organization: string, token: string) {
     loading.value = true
     error.value = null
     
     try {
-      githubService.setToken(token)
-      const isValid = await githubService.validateToken()
+      azureService.setOrganization(organization)
+      azureService.setToken(token)
+      const isValid = await azureService.validateToken()
       
       if (!isValid) {
         throw new Error('Invalid token')
@@ -37,20 +40,22 @@ export const useGithubStore = defineStore('github', () => {
 
       const newAuth = {
         token,
+        organization,
         isAuthenticated: true
       }
       auth.value = newAuth
-      localStorage.setItem('github_auth', JSON.stringify(newAuth))
+      localStorage.setItem('azure_auth', JSON.stringify(newAuth))
       
       await fetchRepositories()
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Authentication failed'
       const resetAuth = {
         token: '',
+        organization: '',
         isAuthenticated: false
       }
       auth.value = resetAuth
-      localStorage.setItem('github_auth', JSON.stringify(resetAuth))
+      localStorage.setItem('azure_auth', JSON.stringify(resetAuth))
     } finally {
       loading.value = false
     }
@@ -58,12 +63,12 @@ export const useGithubStore = defineStore('github', () => {
 
   async function fetchRepositories() {
     if (!auth.value.isAuthenticated) return
-    
+
     loading.value = true
     error.value = null
-    
+
     try {
-      repositories.value = await githubService.getRepositories()
+      repositories.value = await azureService.getRepositories()
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to fetch repositories'
       repositories.value = []
@@ -78,8 +83,9 @@ export const useGithubStore = defineStore('github', () => {
       isAuthenticated: false
     }
     auth.value = newAuth
-    localStorage.setItem('github_auth', JSON.stringify(newAuth))
+    localStorage.setItem('azure_auth', JSON.stringify(newAuth))
     repositories.value = []
+    error.value = null
   }
 
   async function fetchPullRequests(owner: string, repo: string, timeFilter: TimeFilter) {
@@ -89,7 +95,7 @@ export const useGithubStore = defineStore('github', () => {
     error.value = null
     
     try {
-      pullRequests.value = await githubService.getPullRequests(owner, repo, timeFilter)
+      pullRequests.value = await azureService.getPullRequests(owner, repo, timeFilter)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to fetch pull requests'
       pullRequests.value = []
@@ -108,6 +114,6 @@ export const useGithubStore = defineStore('github', () => {
     fetchRepositories,
     fetchPullRequests,
     pullRequests,
-    service: githubService
+    service: azureService
   }
 })

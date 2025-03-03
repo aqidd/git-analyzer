@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createTestingPinia } from '@pinia/testing'
 import AzureLogin from '../AzureLogin.vue'
-import { useAzureStore } from '@/stores/azure'
+import { useAzureStore } from '@/stores/azure.store'
 import { createRouter, createWebHistory } from 'vue-router'
 
 // Mock router

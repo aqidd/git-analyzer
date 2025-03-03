@@ -95,7 +95,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useGitlabStore } from '@/stores/gitlab'
+import { useGitlabStore } from '@/stores/gitlab.store'
 
 const gitlabStore = useGitlabStore()
 const router = useRouter()
