@@ -1,5 +1,5 @@
-import type { Repository, Project, BranchStats, PullRequest, WorkItem, RepositoryPolicy, RepositoryAnalytics } from '@/types/azure'
-import type { Commit, Pipeline, Contributor, RepositoryFile, TimeFilter, Branch } from '@/types/repository'
+import type { Repository, Project, BranchStats, WorkItem, RepositoryPolicy, RepositoryAnalytics } from '@/types/azure'
+import type { Commit, Pipeline, Contributor, RepositoryFile, TimeFilter, Branch, PullRequest } from '@/types/repository'
 import { GitService } from './git'
 
 interface ApiResponse<T> {
@@ -76,7 +76,7 @@ export class AzureService extends GitService {
       name: repo.name,
       description: repo.description,
       url: repo.webUrl,
-      defaultBranch: repo.defaultBranch,
+      default_branch: repo.defaultBranch,
       size: repo.size,
       visibility: repo.project.visibility,
       lastCommitDate: repo.lastUpdateTime,
@@ -91,27 +91,6 @@ export class AzureService extends GitService {
         pullRequestCount: 0
       }
     }))
-  }
-
-  private async getRepositoryById(repoId: string): Promise<Repository> {
-    const data = await this.request<ApiResponse<any>>(`git/repositories/${repoId}`)
-    if (!data) throw new Error('Repository not found')
-    return data
-  }
-
-  private async postRequest<T>(path: string, body: any): Promise<T> {
-    const separator = path.includes('?') ? '&' : '?'
-    const response = await fetch(`${this.baseUrl}/${this.organization}/_apis/${path}${separator}api-version=${this.apiVersion}`, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify(body)
-    })
-
-    if (!response.ok) {
-      throw new Error(`Azure DevOps API request failed: ${response.statusText}`)
-    }
-
-    return response.json()
   }
 
   async getBranchStats(projectId: string, repoId: string): Promise<BranchStats[]> {
@@ -131,8 +110,9 @@ export class AzureService extends GitService {
     }))
   }
 
-  private formatDate(date: string): string {
-    return new Date(date).toISOString()
+  private formatDate(date: string | Date): string {
+    // Convert to ISO 8601 format with timezone
+    return date instanceof Date ? date.toISOString() : new Date(date).toISOString();
   }
 
   async getCommits(projectId: string, repoId: string, timeFilter: TimeFilter): Promise<Commit[]> {
@@ -261,13 +241,28 @@ export class AzureService extends GitService {
 
   async getPullRequests(projectId: string, repoId: string, timeFilter: TimeFilter): Promise<PullRequest[]> {
     const project = await this.request<{ name: string }>(`projects/${projectId}`)
+    // Format dates to ISO 8601
+    const startDate = this.formatDate(timeFilter.startDate)
+    const endDate = this.formatDate(timeFilter.endDate)
+    
+    // Create base query params
     const queryParams = new URLSearchParams({
       'searchCriteria.status': 'all',
-      'searchCriteria.creationDate': this.formatDate(timeFilter.startDate),
+      'searchCriteria.minTime': startDate,
+      'searchCriteria.maxTime': endDate,
       '$top': '100'
-    }).toString()
+    })
 
     const data = await this.request<ApiResponse<any>>(`git/repositories/${repoId}/pullrequests?${queryParams}`, project.name)
+    if (data.value.length > 0) {
+      const dates = data.value.map((pr: any) => new Date(pr.creationDate).getTime())
+      const earliest = new Date(Math.min(...dates))
+      const latest = new Date(Math.max(...dates))
+      console.log(`Earliest PR date: ${earliest.toISOString()}`)
+      console.log(`Latest PR date: ${latest.toISOString()}`)
+    } else {
+      console.log('No pull requests found in the specified date range.')
+    }
     
     return await Promise.all(data.value.map(async (pr: any) => {
       // Get PR details including reviews and comments

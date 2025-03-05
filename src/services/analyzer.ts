@@ -29,9 +29,6 @@ export class Analyzer {
         ).length
         const totalPipelines = pipelines.length
         
-        console.log('==Printing Pielines==')
-        console.log(successfulPipelines, failedPipelines, totalPipelines)
-        console.log(pipelines)
         // Calculate deployment frequency for main/master/develop branches
         const mainBranchPipelines = pipelines.filter(p => 
             (p.ref === 'main' || p.ref === 'master' || p.ref === 'develop') &&

@@ -54,25 +54,6 @@ export interface RepositoryPolicy {
   settings: Record<string, unknown>
 }
 
-export interface PullRequest {
-  id: number
-  title: string
-  description: string | null
-  status: string
-  createdBy: string
-  creationDate: string
-  lastUpdateTime: string
-  sourceRef: string
-  targetRef: string
-  mergeStatus: string
-  isDraft: boolean
-  reviewers: Array<{
-    displayName: string
-    vote: number
-    isRequired: boolean
-  }>
-}
-
 export interface WorkItem {
   id: number
   title: string
