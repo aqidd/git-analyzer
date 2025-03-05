@@ -178,6 +178,37 @@
               unit="stagnant branches"
               :isHealthy="(branchStats?.stagnantBranchCount / branches.length) <= 0.3"
             />            
+            <div class="mb-6"></div>
+
+            <!-- Pull Request Health Metrics -->
+            <HealthMetricCard
+              title="Total Pull Requests"
+              :status="pullRequestStats?.totalPRs > 0 ? 'Active' : 'No PRs'"
+              :value="pullRequestStats?.totalPRs || 0"
+              unit="pull requests"
+              :isHealthy="pullRequestStats?.totalPRs > 0"
+            />
+            <HealthMetricCard
+              title="PR Frequency"
+              :status="pullRequestStats?.averagePRPerDay >= 0.5 ? 'Active' : 'Low Activity'"
+              :value="(pullRequestStats?.averagePRPerDay || 0).toFixed(1)"
+              unit="PRs/day"
+              :isHealthy="pullRequestStats?.averagePRPerDay >= 0.5"
+            />
+            <HealthMetricCard
+              title="Top PR Contributor"
+              :status="pullRequestStats?.topContributor ? 'Active' : 'No Data'"
+              :value="(pullRequestStats?.topContributor || '').substring(0, 14) + '...'"
+              :unit="`${(pullRequestStats?.topContributorPRs || 0)} PRs`"
+              :isHealthy="pullRequestStats?.topContributor !== ''"
+            />
+            <HealthMetricCard
+              title="Top Contributor Rate"
+              :status="pullRequestStats?.topContributorAvgPRPerDay >= 0.2 ? 'Active' : 'Low Activity'"
+              :value="(pullRequestStats?.topContributorAvgPRPerDay || 0).toFixed(1)"
+              unit="PRs/day"
+              :isHealthy="pullRequestStats?.topContributorAvgPRPerDay >= 0.2"
+            />
 
             <!-- Stagnant Branches List -->
             <div v-if="branchStats?.stagnantBranches.length" class="mb-6 col-span-full">
@@ -391,6 +422,22 @@ const timeFilter = ref<TimeFilter>({
   endDate: new Date().toISOString().split('T')[0]
 })
 
+interface PullRequestStats {
+  totalPRs: number
+  averagePRPerDay: number
+  topContributor: string
+  topContributorPRs: number
+  topContributorAvgPRPerDay: number
+}
+
+const pullRequestStats = ref<PullRequestStats>({
+  totalPRs: 0,
+  averagePRPerDay: 0,
+  topContributor: '',
+  topContributorPRs: 0,
+  topContributorAvgPRPerDay: 0
+})
+
 const analyzer = new Analyzer()
 
 const pipelineStats = computed(() => analyzer.analyzePipelines(pipelines.value, timeFilter.value))
@@ -457,6 +504,7 @@ const loadData = async () => {
       branches.value = await gitlabStore.service.getBranches(String(id), String(id))
       pullRequests.value = await gitlabStore.service.getPullRequests(projectId, timeFilter.value)
       branchStats.value = analyzer.analyzeBranches(branches.value)
+      pullRequestStats.value = analyzer.analyzePullRequests(pullRequests.value, timeFilter.value)
     } else if (type === 'github') {
       if (!githubStore.service) {
         throw new Error('GitHub service not initialized. Please log in again.')
@@ -472,6 +520,7 @@ const loadData = async () => {
       branches.value = await githubStore.service.getBranches(owner, repo)
       pullRequests.value = await githubStore.service.getPullRequests(owner, repo, timeFilter.value)
       branchStats.value = analyzer.analyzeBranches(branches.value)
+      pullRequestStats.value = analyzer.analyzePullRequests(pullRequests.value, timeFilter.value)
     } else if (type === 'azure') {
       if (!azureStore.auth.isAuthenticated) {
         throw new Error('Azure DevOps service not initialized. Please log in again.')
@@ -490,6 +539,7 @@ const loadData = async () => {
       branches.value = await azureStore.service.getBranches(projectId, id)
       pullRequests.value = await azureStore.service.getPullRequests(projectId, id, timeFilter.value)
       branchStats.value = analyzer.analyzeBranches(branches.value)
+      pullRequestStats.value = analyzer.analyzePullRequests(pullRequests.value, timeFilter.value)
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load repository data'

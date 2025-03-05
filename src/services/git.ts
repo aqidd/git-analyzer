@@ -1,4 +1,4 @@
-import type { Branch, Commit, Contributor, Pipeline, RepositoryFile, TimeFilter } from "@/types/repository";
+import type { Branch, Commit, Contributor, Pipeline, PullRequest, RepositoryFile, TimeFilter } from "@/types/repository";
 
 export abstract class GitService {
     token: string = ''

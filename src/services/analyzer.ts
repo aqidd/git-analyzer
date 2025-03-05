@@ -126,6 +126,37 @@ export class Analyzer {
         return 'Very Unequal'
     }
 
+    analyzePullRequests(pullRequests: any[], timeFilter: TimeFilter) {
+        const startDate = new Date(timeFilter.startDate)
+        const endDate = new Date(timeFilter.endDate)
+        const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+
+        // Group PRs by author
+        const authorStats = pullRequests.reduce((acc: { [key: string]: number }, pr) => {
+            const author = typeof pr.author === 'object' ? pr.author.name : pr.author || pr.user?.login || 'Unknown'
+            acc[author] = (acc[author] || 0) + 1
+            return acc
+        }, {})
+
+        // Find top contributor
+        let topContributor = 'Unknown'
+        let topContributorPRs = 0
+        Object.entries(authorStats).forEach(([author, count]) => {
+            if (count > topContributorPRs) {
+                topContributor = author
+                topContributorPRs = count
+            }
+        })
+
+        return {
+            totalPRs: pullRequests.length,
+            averagePRPerDay: totalDays > 0 ? pullRequests.length / totalDays : 0,
+            topContributor,
+            topContributorPRs,
+            topContributorAvgPRPerDay: totalDays > 0 ? topContributorPRs / totalDays : 0
+        }
+    }
+
     analyzeDocumentation() {
         
     }
