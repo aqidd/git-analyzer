@@ -1,9 +1,11 @@
 <!-- 
-  Updated: Repository view with healthcheck dashboard and paginated details
+  Updated: Repository view with healthcheck dashboard, paginated details, and contributor filtering
   - Added health metrics section with popup descriptions
   - Combined all details into paginated tabs
   - Improved code organization and readability
   - Added reusable HealthMetricCard component
+  - Added contributor filtering with proper type handling for different author formats
+  - Combined contributors with same name into single filter option
 -->
 <template>
   <div class="min-h-screen bg-gray-50 py-8 dark:bg-gray-900">
@@ -33,15 +35,30 @@
         </button>
       </div>
 
-      <!-- Date Filter -->
-      <div class="mb-8 flex gap-4">
-        <input type="date" v-model="timeFilter.startDate"
-          class="rounded-md border-gray-300 px-4 py-2 dark:border-gray-700 dark:bg-gray-800" />
-        <input type="date" v-model="timeFilter.endDate"
-          class="rounded-md border-gray-300 px-4 py-2 dark:border-gray-700 dark:bg-gray-800" />
-        <button @click="loadData" class="rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">
-          Apply Filter
-        </button>
+      <!-- Filters -->
+      <div class="mb-8 space-y-4">
+        <!-- Date Filter -->
+        <div class="flex gap-4">
+          <input type="date" v-model="timeFilter.startDate"
+            class="rounded-md border-gray-300 px-4 py-2 dark:border-gray-700 dark:bg-gray-800" />
+          <input type="date" v-model="timeFilter.endDate"
+            class="rounded-md border-gray-300 px-4 py-2 dark:border-gray-700 dark:bg-gray-800" />
+        </div>
+        <!-- Contributor Filter -->
+        <div class="flex gap-4">
+          <select v-model="selectedContributor"
+            class="rounded-md border-gray-300 px-4 py-2 dark:border-gray-700 dark:bg-gray-800">
+            <option value="">All Contributors</option>
+            <option v-for="contributor in uniqueContributors" :key="contributor" :value="contributor">
+              {{ contributor }}
+            </option>
+          </select>
+          <button @click="loadData" 
+            class="rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-filter"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            Apply Filters
+          </button>
+        </div>
       </div>
 
       <!-- Loading State -->
@@ -430,6 +447,9 @@ interface PullRequestStats {
   topContributorAvgPRPerDay: number
 }
 
+const selectedContributor = ref('')
+const uniqueContributors = ref<string[]>([])
+
 const pullRequestStats = ref<PullRequestStats>({
   totalPRs: 0,
   averagePRPerDay: 0,
@@ -485,7 +505,7 @@ const formatSize = (bytes: number) => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
 }
 
-// Updated: Added pull requests fetching
+// Updated: Added contributor filtering
 const loadData = async () => {
   const { id, type } = route.params
   error.value = null
@@ -503,8 +523,6 @@ const loadData = async () => {
       files.value = await gitlabStore.service.getFiles(projectId)
       branches.value = await gitlabStore.service.getBranches(String(id), String(id))
       pullRequests.value = await gitlabStore.service.getPullRequests(projectId, timeFilter.value)
-      branchStats.value = analyzer.analyzeBranches(branches.value)
-      pullRequestStats.value = analyzer.analyzePullRequests(pullRequests.value, timeFilter.value)
     } else if (type === 'github') {
       if (!githubStore.service) {
         throw new Error('GitHub service not initialized. Please log in again.')
@@ -519,8 +537,6 @@ const loadData = async () => {
       files.value = await githubStore.service.getFiles(owner, repo)
       branches.value = await githubStore.service.getBranches(owner, repo)
       pullRequests.value = await githubStore.service.getPullRequests(owner, repo, timeFilter.value)
-      branchStats.value = analyzer.analyzeBranches(branches.value)
-      pullRequestStats.value = analyzer.analyzePullRequests(pullRequests.value, timeFilter.value)
     } else if (type === 'azure') {
       if (!azureStore.auth.isAuthenticated) {
         throw new Error('Azure DevOps service not initialized. Please log in again.')
@@ -538,9 +554,76 @@ const loadData = async () => {
       files.value = await azureStore.service.getFiles(projectId, id)
       branches.value = await azureStore.service.getBranches(projectId, id)
       pullRequests.value = await azureStore.service.getPullRequests(projectId, id, timeFilter.value)
-      branchStats.value = analyzer.analyzeBranches(branches.value)
-      pullRequestStats.value = analyzer.analyzePullRequests(pullRequests.value, timeFilter.value)
     }
+
+    // Update unique contributors list before filtering
+    const contributorMap = new Map<string, string[]>()
+    
+    // Helper function to get normalized name from different author formats
+    const getNormalizedName = (author: unknown): string => {
+      if (!author) return 'Unknown'
+      
+      // Handle PullRequest author object
+      if (typeof author === 'object' && author !== null && 'name' in author) {
+        return (author as { name: string }).name
+      }
+      
+      // Handle string format (Branch lastCommitAuthor)
+      if (typeof author === 'string') {
+        return author
+      }
+      
+      return 'Unknown'
+    }
+
+    // Collect all variations of names
+    commits.value.forEach(commit => {
+      const authorName = commit.author_name
+      if (authorName) {
+        const normalizedName = getNormalizedName(authorName)
+        const variations = contributorMap.get(normalizedName) || []
+        if (!variations.includes(authorName)) {
+          variations.push(authorName)
+          contributorMap.set(normalizedName, variations)
+        }
+      }
+    })
+
+    branches.value.forEach(branch => {
+      if (branch.lastCommitAuthor) {
+        const normalizedName = getNormalizedName(branch.lastCommitAuthor)
+        const variations = contributorMap.get(normalizedName) || []
+        if (!variations.includes(branch.lastCommitAuthor)) {
+          variations.push(branch.lastCommitAuthor)
+          contributorMap.set(normalizedName, variations)
+        }
+      }
+    })
+
+    pullRequests.value.forEach(pr => {
+      if (pr.author?.name) {
+        const normalizedName = getNormalizedName(pr.author)
+        const variations = contributorMap.get(normalizedName) || []
+        if (!variations.includes(pr.author.name)) {
+          variations.push(pr.author.name)
+          contributorMap.set(normalizedName, variations)
+        }
+      }
+    })
+
+    uniqueContributors.value = Array.from(contributorMap.keys()).sort()
+
+    // Filter data by contributor if selected
+    if (selectedContributor.value) {
+      const variations = contributorMap.get(selectedContributor.value) || []
+      commits.value = commits.value.filter(commit => variations.includes(commit.author_name))
+      branches.value = branches.value.filter(branch => variations.includes(branch.lastCommitAuthor || ''))
+      pullRequests.value = pullRequests.value.filter(pr => variations.includes(pr.author?.name || ''))
+    }
+
+    // Calculate statistics after filtering
+    branchStats.value = analyzer.analyzeBranches(branches.value)
+    pullRequestStats.value = analyzer.analyzePullRequests(pullRequests.value, timeFilter.value)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load repository data'
     commits.value = []
@@ -548,6 +631,7 @@ const loadData = async () => {
     contributors.value = []
     files.value = []
     pullRequests.value = []
+    uniqueContributors.value = []
   } finally {
     loading.value = false
   }
