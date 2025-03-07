@@ -1,6 +1,6 @@
 import type { Repository, Project, BranchStats, WorkItem, RepositoryPolicy, RepositoryAnalytics } from '@/types/azure'
 import type { Commit, Pipeline, Contributor, RepositoryFile, TimeFilter, Branch, PullRequest } from '@/types/repository'
-import { GitService } from './git'
+import { GitService } from './git.service'
 
 interface ApiResponse<T> {
   count: number

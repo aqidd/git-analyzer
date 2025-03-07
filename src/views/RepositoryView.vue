@@ -338,7 +338,7 @@ import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } fro
 import { useGitlabStore } from '@/stores/gitlab.store'
 import { useGithubStore } from '@/stores/github.store'
 import { useAzureStore } from '@/stores/azure.store'
-import { Analyzer } from '@/services/analyzer'
+import { Analyzer } from '@/services/analyzer.service'
 import HealthMetricCard from '@/components/HealthMetricCard.vue'
 import PaginatedDetails from '@/components/PaginatedDetails.vue'
 import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, Branch, PullRequest } from '@/types/repository'

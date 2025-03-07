@@ -1,5 +1,11 @@
 <!--
   Changes:
+  2025-03-07:
+  - Added pin functionality with persistence
+  - Added pin button with animation
+  - Updated styling for pinned state
+  
+  Previous:
   - Created RepositoryCard component to display repository information
   - Added props for repository data and helper methods
   - Implemented consistent styling with Tailwind CSS
@@ -28,7 +34,7 @@
           </div>
         </div>
       </div>
-      <div class="flex items-center">
+      <div class="flex items-center justify-between">
         <div class="flex items-center space-x-2">
           <a :href="repoUrl" target="_blank" rel="noopener noreferrer" :class="[
             'inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white rounded-lg focus:ring-4 focus:outline-none',
@@ -48,6 +54,20 @@
             class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-indigo-600 bg-white border border-indigo-600 rounded-lg hover:bg-indigo-50 focus:ring-4 focus:outline-none focus:ring-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-400 dark:hover:bg-gray-700">
             Analytics
           </router-link>
+          <button
+            @click="togglePin"
+            :class="[
+              'inline-flex items-center p-2 text-sm font-medium text-center rounded-lg focus:ring-4 focus:outline-none transition-transform hover:scale-110',
+              isPinned
+                ? 'text-yellow-400 hover:text-yellow-500 focus:ring-yellow-300'
+                : 'text-gray-400 hover:text-gray-500 focus:ring-gray-300'
+            ]"
+            :title="isPinned ? 'Unpin repository' : 'Pin repository'"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L9.5 8.5 2 12l7.5 3.5L12 22l2.5-6.5L22 12l-7.5-3.5z"/>
+            </svg>
+          </button>
         </div>
       </div>
     </div>
@@ -57,10 +77,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Repository } from '@/types/repository'
+import { usePinnedStore } from '@/stores/pinned.store'
 
 const props = defineProps<{
   repository: Repository
 }>()
+
+const pinnedStore = usePinnedStore()
 
 const isGitLab = computed(() => 'web_url' in props.repository && 'star_count' in props.repository)
 const isAzure = computed(() => 'project' in props.repository && 'stats' in props.repository)
@@ -113,6 +136,17 @@ const repositoryId = computed(() => {
   } else if (isGitHub.value && 'owner' in props.repository) {
     return `${props.repository.owner?.login}/${props.repository.name}`
   }
-  return ''
+  return props.repository?.id?.toString() || ''
 })
+
+const isPinned = computed(() => pinnedStore.isPinned(repositoryId.value, repoType.value))
+
+const togglePin = () => {
+  pinnedStore.togglePin({
+    id: repositoryId.value,
+    name: props.repository.name,
+    provider: repoType.value,
+    url: repoUrl.value
+  })
+}
 </script>

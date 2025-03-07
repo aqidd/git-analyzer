@@ -1,6 +1,6 @@
 import type { Repository } from '@/types/github'
 import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, PullRequest } from '@/types/repository'
-import { GitService } from './git'
+import { GitService } from './git.service'
 
 export class GithubService extends GitService {
   token: string = ''

@@ -1,6 +1,6 @@
 import type { Repository } from '@/types/gitlab'
 import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, PullRequest } from '@/types/repository'
-import { GitService } from './git'
+import { GitService } from './git.service'
 
 export class GitlabService extends GitService {
   token: string = ''

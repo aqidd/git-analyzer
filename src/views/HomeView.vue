@@ -4,18 +4,31 @@
       <div class="flex flex-col gap-4 mb-4">
         <div class="flex items-center justify-between">
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Your Repositories</h1>
-          <div class="flex gap-2">
-            <button v-if="gitlabStore.auth.isAuthenticated" @click="handleLogout('gitlab')"
-              :disabled="loggingOut"
-              class="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg text-white bg-[#FC6D26] hover:bg-[#E24329] focus:ring-4 focus:ring-[#FC6D26]/50 disabled:opacity-50 disabled:cursor-not-allowed">
-              <span v-if="loggingOut" class="mr-2">
-                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </span>
-              Logout GitLab
-            </button>
+          <div class="flex items-center gap-4">
+            <div class="flex items-center">
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  v-model="pinnedStore.rememberPins"
+                  @change="handleRememberPinsChange"
+                  class="sr-only peer"
+                >
+                <div class="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                <span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">Remember Pins</span>
+              </label>
+            </div>
+            <div class="flex gap-2">
+              <button v-if="gitlabStore.auth.isAuthenticated" @click="handleLogout('gitlab')"
+                :disabled="loggingOut"
+                class="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg text-white bg-[#FC6D26] hover:bg-[#E24329] focus:ring-4 focus:ring-[#FC6D26]/50 disabled:opacity-50 disabled:cursor-not-allowed">
+                <span v-if="loggingOut" class="mr-2">
+                  <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </span>
+                Logout GitLab
+              </button>
             <button v-if="githubStore.auth.isAuthenticated" @click="handleLogout('github')"
               :disabled="loggingOut"
               class="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg text-white bg-[#2DA44E] hover:bg-[#2C974B] focus:ring-4 focus:ring-[#2DA44E]/50 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -38,6 +51,7 @@
               </span>
               Logout Azure
             </button>
+            </div>
           </div>
         </div>
         <div class="flex flex-col sm:flex-row gap-4">
@@ -119,6 +133,7 @@ import { useRouter } from 'vue-router'
 import { useGitlabStore } from '@/stores/gitlab.store'
 import { useGithubStore } from '@/stores/github.store'
 import { useAzureStore } from '@/stores/azure.store'
+import { usePinnedStore } from '@/stores/pinned.store'
 import RepositoryCard from '@/components/RepositoryCard.vue'
 import type { Repository as GitLabRepository } from '@/types/gitlab'
 import type { Repository as GitHubRepository } from '@/types/github'
@@ -128,6 +143,7 @@ import type { Repository as AzureRepository } from '@/types/azure'
 const gitlabStore = useGitlabStore()
 const githubStore = useGithubStore()
 const azureStore = useAzureStore()
+const pinnedStore = usePinnedStore()
 const router = useRouter()
 
 const loading = computed(() => gitlabStore.loading || githubStore.loading || azureStore.loading)
@@ -174,7 +190,7 @@ const repositories = computed(() => {
     : allRepos
 
   // Sort repositories
-  return filteredRepos.sort((a, b) => {
+  const sortedRepos = filteredRepos.sort((a, b) => {
     let comparison = 0
     if (sortBy.value === 'date') {
       const dateA = new Date(a.last_activity_at || a.updated_at || a.lastCommitDate)
@@ -185,9 +201,27 @@ const repositories = computed(() => {
     }
     return sortOrder.value === 'asc' ? comparison * -1 : comparison
   })
+
+  // Move pinned repositories to the top
+  return sortedRepos.sort((a, b) => {
+    const aIsPinned = pinnedStore.isPinned(a.id?.toString() || '', getRepoType(a))
+    const bIsPinned = pinnedStore.isPinned(b.id?.toString() || '', getRepoType(b))
+    return bIsPinned ? 1 : aIsPinned ? -1 : 0
+  })
 })
 
 type AllRepository = GitLabRepository | GitHubRepository | AzureRepository
+
+const getRepoType = (repo: AllRepository) => {
+  if ('web_url' in repo && 'star_count' in repo) return 'gitlab'
+  if ('project' in repo && 'stats' in repo) return 'azure'
+  return 'github'
+}
+
+const handleRememberPinsChange = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  pinnedStore.toggleRememberPins(target.checked)
+}
 
 
 
