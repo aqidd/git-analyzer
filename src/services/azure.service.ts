@@ -1,5 +1,12 @@
+/**
+ * 2025-03-07:
+ * - Added comprehensive pipeline status mapping for Azure DevOps
+ * - Improved type safety with PipelineStatus type
+ * - Added proper status handling for both completed and in-progress pipelines
+ */
+
 import type { Repository, Project, BranchStats, WorkItem, RepositoryPolicy, RepositoryAnalytics } from '@/types/azure'
-import type { Commit, Pipeline, Contributor, RepositoryFile, TimeFilter, Branch, PullRequest } from '@/types/repository'
+import type { Commit, Pipeline, Contributor, RepositoryFile, TimeFilter, Branch, PullRequest, PipelineStatus } from '@/types/repository'
 import { GitService } from './git.service'
 
 interface ApiResponse<T> {
@@ -135,6 +142,38 @@ export class AzureService extends GitService {
     }))
   }
 
+  private mapAzurePipelineStatus(status: string, result?: string): PipelineStatus {
+    // Handle completed pipelines
+    if (status.toLowerCase() === 'completed') {
+      switch (result?.toLowerCase()) {
+        case 'succeeded':
+          return 'success'
+        case 'failed':
+          return 'failed'
+        case 'canceled':
+          return 'cancelled'
+        case 'skipped':
+          return 'skipped'
+        default:
+          return 'unknown'
+      }
+    }
+
+    // Handle in-progress states
+    switch (status.toLowerCase()) {
+      case 'notstarted':
+        return 'pending'
+      case 'inprogress':
+        return 'running'
+      case 'canceling':
+        return 'cancelled'
+      case 'postponed':
+        return 'scheduled'
+      default:
+        return 'unknown'
+    }
+  }
+
   async getPipelines(projectId: string, repoId: string, timeFilter: TimeFilter): Promise<Pipeline[]> {
     const project = await this.request<{ name: string }>(`projects/${projectId}`)
     const queryParams = new URLSearchParams({
@@ -147,10 +186,10 @@ export class AzureService extends GitService {
 
     return data.value.map(pipeline => ({
       id: pipeline.id,
-      status: pipeline.status === 'completed' && pipeline.result === 'succeeded' ? 'succeeded' : pipeline.status.toLowerCase(),
+      status: this.mapAzurePipelineStatus(pipeline.status, pipeline.result),
       ref: pipeline.sourceBranch?.replace('refs/heads/', '') || '',
       sha: pipeline.sourceVersion || '',
-      conclusion: pipeline.result?.toLowerCase() || '',
+      conclusion: pipeline.result?.toLowerCase() as PipelineStatus,
       web_url: pipeline._links?.web?.href || '',
       created_at: pipeline.startTime || pipeline.queueTime,
       updated_at: pipeline.finishTime || pipeline.queueTime

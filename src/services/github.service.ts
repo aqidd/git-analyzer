@@ -1,5 +1,12 @@
+/**
+ * 2025-03-07:
+ * - Added comprehensive pipeline status mapping for GitHub Actions
+ * - Improved type safety with PipelineStatus type
+ * - Added proper status handling for both status and conclusion fields
+ */
+
 import type { Repository } from '@/types/github'
-import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, PullRequest } from '@/types/repository'
+import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, PullRequest, PipelineStatus } from '@/types/repository'
 import { GitService } from './git.service'
 
 export class GithubService extends GitService {
@@ -82,6 +89,37 @@ export class GithubService extends GitService {
     }))
   }
 
+  private mapGitHubPipelineStatus(status: string, conclusion?: string): PipelineStatus {
+    // If we have a conclusion, it means the run is completed
+    if (conclusion) {
+      switch (conclusion.toLowerCase()) {
+        case 'success':
+          return 'success'
+        case 'failure':
+          return 'failed'
+        case 'cancelled':
+        case 'canceled':
+          return 'cancelled'
+        case 'skipped':
+          return 'skipped'
+        default:
+          return 'unknown'
+      }
+    }
+
+    // Handle in-progress states
+    switch (status.toLowerCase()) {
+      case 'queued':
+        return 'pending'
+      case 'in_progress':
+        return 'running'
+      case 'waiting':
+        return 'waiting_for_resource'
+      default:
+        return 'unknown'
+    }
+  }
+
   async getPipelines(owner: string, repo: string, timeFilter: TimeFilter): Promise<Pipeline[]> {
     const { startDate, endDate } = timeFilter
     const data = await this.request(
@@ -89,8 +127,8 @@ export class GithubService extends GitService {
     )
     return data.workflow_runs.map((run: any) => ({
       id: run.id,
-      status: run.status,
-      conclusion: run.conclusion,
+      status: this.mapGitHubPipelineStatus(run.status, run.conclusion),
+      conclusion: run.conclusion as PipelineStatus,
       ref: run.head_branch,
       sha: run.head_sha,
       html_url: run.html_url,

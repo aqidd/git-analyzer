@@ -207,10 +207,10 @@
             />
             <HealthMetricCard
               title="PR Frequency"
-              :status="pullRequestStats?.averagePRPerDay >= 0.5 ? 'Active' : 'Low Activity'"
+              :status="pullRequestStats?.averagePRPerDay >= 2 ? 'Active' : 'Low Activity'"
               :value="(pullRequestStats?.averagePRPerDay || 0).toFixed(1)"
               unit="PRs/day"
-              :isHealthy="pullRequestStats?.averagePRPerDay >= 0.5"
+              :isHealthy="pullRequestStats?.averagePRPerDay >= 2"
             />
             <HealthMetricCard
               title="Top PR Contributor"
@@ -221,10 +221,10 @@
             />
             <HealthMetricCard
               title="Top Contributor Rate"
-              :status="pullRequestStats?.topContributorAvgPRPerDay >= 0.2 ? 'Active' : 'Low Activity'"
+              :status="pullRequestStats?.topContributorAvgPRPerDay >= 1 ? 'Active' : 'Low Activity'"
               :value="(pullRequestStats?.topContributorAvgPRPerDay || 0).toFixed(1)"
               unit="PRs/day"
-              :isHealthy="pullRequestStats?.topContributorAvgPRPerDay >= 0.2"
+              :isHealthy="pullRequestStats?.topContributorAvgPRPerDay >= 1"
             />
 
             <!-- Stagnant Branches List -->

@@ -26,12 +26,32 @@ export interface Commit {
   html_url?: string
 }
 
+export type PipelineStatus =
+  // Success states
+  | 'success'
+  | 'succeeded'
+  // Failure states
+  | 'failed'
+  | 'failure'
+  | 'cancelled'
+  | 'skipped'
+  // In-progress states
+  | 'pending'
+  | 'running'
+  | 'in_progress'
+  | 'created'
+  | 'waiting_for_resource'
+  | 'preparing'
+  | 'scheduled'
+  // Other states
+  | 'unknown'
+
 export interface Pipeline {
   id: number
-  status: string
+  status: PipelineStatus
   ref: string
   sha: string
-  conclusion?: string
+  conclusion?: PipelineStatus
   web_url?: string
   html_url?: string
   created_at: string

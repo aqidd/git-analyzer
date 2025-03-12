@@ -1,5 +1,12 @@
 import type { Repository } from '@/types/gitlab'
-import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, PullRequest } from '@/types/repository'
+/**
+ * 2025-03-07:
+ * - Added comprehensive pipeline status mapping for GitLab CI
+ * - Improved type safety with PipelineStatus type
+ * - Added proper status handling for all pipeline states
+ */
+
+import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, PullRequest, PipelineStatus } from '@/types/repository'
 import { GitService } from './git.service'
 
 export class GitlabService extends GitService {
@@ -79,6 +86,36 @@ export class GitlabService extends GitService {
     }))
   }
 
+  private mapGitLabPipelineStatus(status: string): PipelineStatus {
+    switch (status.toLowerCase()) {
+      case 'success':
+      case 'succeeded':
+        return 'success'
+      case 'failed':
+      case 'failure':
+        return 'failed'
+      case 'canceled':
+      case 'cancelled':
+        return 'cancelled'
+      case 'skipped':
+        return 'skipped'
+      case 'created':
+        return 'created'
+      case 'waiting_for_resource':
+        return 'waiting_for_resource'
+      case 'preparing':
+        return 'preparing'
+      case 'pending':
+        return 'pending'
+      case 'running':
+        return 'running'
+      case 'scheduled':
+        return 'scheduled'
+      default:
+        return 'unknown'
+    }
+  }
+
   async getPipelines(projectId: number, timeFilter: TimeFilter): Promise<Pipeline[]> {
     const { startDate, endDate } = timeFilter
     const data = await this.request(
@@ -86,7 +123,7 @@ export class GitlabService extends GitService {
     )
     return data.map((pipeline: any) => ({
       id: pipeline.id,
-      status: pipeline.status,
+      status: this.mapGitLabPipelineStatus(pipeline.status),
       ref: pipeline.ref,
       sha: pipeline.sha,
       web_url: pipeline.web_url,

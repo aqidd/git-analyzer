@@ -123,7 +123,7 @@
           <div>
             <p class="font-medium text-gray-900 dark:text-white">{{ pipeline.ref }}</p>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              Status: {{ pipeline.status }} | Updated: {{ new Date(pipeline.updated_at).toLocaleDateString() }}
+              Status: <span :class="getPipelineStatusColor(pipeline.conclusion || pipeline.status)">{{ pipeline.conclusion || pipeline.status }}</span> | Updated: {{ new Date(pipeline.updated_at).toLocaleDateString() }}
             </p>
           </div>
           <a :href="pipeline.web_url || pipeline.html_url" target="_blank" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">View</a>
@@ -203,9 +203,15 @@
   </div>
 </template>
 
+<!--
+2025-03-07:
+- Added color-coded pipeline status indicators
+- Added comprehensive status checks for both GitHub and GitLab pipelines
+- Improved type safety and readability
+-->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { Commit, Branch, Pipeline, Contributor, PullRequest } from '@/types/repository'
+import type { Commit, Branch, Pipeline, Contributor, PullRequest, PipelineStatus } from '@/types/repository'
 import { GitMergeIcon, GitCommitIcon, GitBranchIcon, UsersIcon, RocketIcon } from 'lucide-vue-next'
 
 // Updated: Added pull requests tab with proper icons
@@ -222,6 +228,28 @@ const props = defineProps<Props>()
 const itemsPerPage = 25
 const currentPage = ref(1)
 const currentTab = ref('commits')
+
+const getPipelineStatusColor = (status: PipelineStatus): string => {
+  const lowerStatus = status.toLowerCase()
+  
+  // Success states - both GitLab and GitHub
+  if (['success', 'succeeded'].includes(lowerStatus)) {
+    return 'text-green-600 dark:text-green-400'
+  }
+  
+  // Failure states - both GitLab and GitHub
+  if (['failed', 'failure', 'cancelled', 'skipped'].includes(lowerStatus)) {
+    return 'text-red-600 dark:text-red-400'
+  }
+  
+  // In-progress states - both GitLab and GitHub
+  if (['pending', 'running', 'in_progress', 'created', 'waiting_for_resource', 'preparing', 'scheduled'].includes(lowerStatus)) {
+    return 'text-yellow-600 dark:text-yellow-400'
+  }
+  
+  // Default/unknown state
+  return 'text-gray-600 dark:text-gray-400'
+}
 
 const tabs = [
   { key: 'commits', label: 'Commits', icon: GitCommitIcon },
