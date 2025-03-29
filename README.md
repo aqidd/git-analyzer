@@ -6,6 +6,9 @@
 
 A modern web application for analyzing Git repositories across multiple platforms (GitHub, GitLab, and Azure DevOps). This tool provides insights into repository health, commit patterns, pipeline performance, and contributor metrics to help teams improve their development practices.
 
+![RepoHealth](/public/repohealth.png)
+Test it [Here](https://repohealth.flipboxstudio.com/)
+
 ## Features
 
 - **Multi-Platform Support**: Connect to GitHub, GitLab, and Azure DevOps repositories
