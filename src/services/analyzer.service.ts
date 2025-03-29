@@ -150,7 +150,8 @@ export class Analyzer {
             averagePRPerDay: totalDays > 0 ? pullRequests.length / totalDays : 0,
             topContributor,
             topContributorPRs,
-            topContributorAvgPRPerDay: totalDays > 0 ? topContributorPRs / totalDays : 0
+            topContributorAvgPRPerDay: totalDays > 0 ? topContributorPRs / totalDays : 0,
+            averageLoCPerPR: pullRequests.reduce((sum, pr) => sum + (pr.locChanged || 0), 0) / pullRequests.length,
         }
     }
 

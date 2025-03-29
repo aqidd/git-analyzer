@@ -6,7 +6,7 @@
  */
 
 import type { Repository } from '@/types/github'
-import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, PullRequest, PipelineStatus } from '@/types/repository'
+import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, PullRequest, PipelineStatus, Branch } from '@/types/repository'
 import { GitService } from './git.service'
 
 export class GithubService extends GitService {
@@ -206,6 +206,7 @@ export class GithubService extends GitService {
       // Get PR details including file changes
       const details = await this.request(`/repos/${owner}/${repo}/pulls/${pr.number}`)
       
+      const locChanged = (details.additions || 0) + (details.deletions || 0)
       return {
         id: pr.id,
         title: pr.title,
@@ -233,6 +234,7 @@ export class GithubService extends GitService {
         additions: details.additions,
         deletions: details.deletions,
         changedFiles: details.changed_files,
+        locChanged, // Add LoC change
         labels: pr.labels.map((label: any) => label.name),
         timeToMerge: pr.merged_at ? 
           (new Date(pr.merged_at).getTime() - new Date(pr.created_at).getTime()) / (1000 * 60 * 60) :

@@ -176,6 +176,7 @@ export class GitlabService extends GitService {
       const timeToMerge = details.merged_at ? 
         (new Date(details.merged_at).getTime() - new Date(details.created_at).getTime()) / (1000 * 60 * 60) : 
         undefined
+      const locChanged = (details.changes_count || 0) // GitLab provides total changes directly
 
       return {
         id: mr.id,
@@ -204,6 +205,7 @@ export class GitlabService extends GitService {
         additions: details.changes_count || 0,
         deletions: details.changes_count || 0,
         changedFiles: details.changes_count || 0,
+        locChanged, // Add LoC change
         labels: mr.labels || [],
         timeToMerge,
         timeToFirstReview: undefined // GitLab API doesn't provide this directly

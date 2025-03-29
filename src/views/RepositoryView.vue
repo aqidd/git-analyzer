@@ -226,6 +226,13 @@
               unit="PRs/day"
               :isHealthy="pullRequestStats?.topContributorAvgPRPerDay >= 1"
             />
+            <HealthMetricCard
+              title="Average LoC per PR"
+              :status="pullRequestStats?.averageLoCPerPR < 300 ? 'Healthy' : 'Needs Improvement'"
+              :value="(pullRequestStats?.averageLoCPerPR || 0).toFixed(1)"
+              unit="lines/PR"
+              :isHealthy="pullRequestStats?.averageLoCPerPR < 300"
+            />
 
             <!-- Stagnant Branches List -->
             <div v-if="branchStats?.stagnantBranches.length" class="mb-6 col-span-full">
@@ -445,6 +452,7 @@ interface PullRequestStats {
   topContributor: string
   topContributorPRs: number
   topContributorAvgPRPerDay: number
+  averageLoCPerPR: number
 }
 
 const selectedContributor = ref('')
@@ -455,7 +463,8 @@ const pullRequestStats = ref<PullRequestStats>({
   averagePRPerDay: 0,
   topContributor: '',
   topContributorPRs: 0,
-  topContributorAvgPRPerDay: 0
+  topContributorAvgPRPerDay: 0,
+  averageLoCPerPR: 0
 })
 
 const analyzer = new Analyzer()

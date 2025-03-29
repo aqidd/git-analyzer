@@ -293,22 +293,13 @@ export class AzureService extends GitService {
     })
 
     const data = await this.request<ApiResponse<any>>(`git/repositories/${repoId}/pullrequests?${queryParams}`, project.name)
-    if (data.value.length > 0) {
-      const dates = data.value.map((pr: any) => new Date(pr.creationDate).getTime())
-      const earliest = new Date(Math.min(...dates))
-      const latest = new Date(Math.max(...dates))
-      console.log(`Earliest PR date: ${earliest.toISOString()}`)
-      console.log(`Latest PR date: ${latest.toISOString()}`)
-    } else {
-      console.log('No pull requests found in the specified date range.')
-    }
     
     return await Promise.all(data.value.map(async (pr: any) => {
       // Get PR details including reviews and comments
       const details = await this.request<any>(`git/repositories/${repoId}/pullrequests/${pr.pullRequestId}`, project.name)
       const threads = await this.request<ApiResponse<any>>(`git/repositories/${repoId}/pullrequests/${pr.pullRequestId}/threads`, project.name)
       
-      // Calculate review times
+     // Calculate review times
       const reviews = threads.value.filter((thread: any) => thread.status === 'active' && thread.comments?.length > 0)
       const firstReview = reviews.length > 0 ? 
         reviews.reduce((earliest: any, current: any) => {
@@ -320,6 +311,9 @@ export class AzureService extends GitService {
       const timeToFirstReview = firstReview ? 
         (firstReview.getTime() - new Date(pr.creationDate).getTime()) / (1000 * 60 * 60) :
         undefined
+
+      const locChanged = (details.lastMergeSourceCommit?.changeCounts?.Add || 0) + 
+                         (details.lastMergeSourceCommit?.changeCounts?.Delete || 0)
 
       return {
         id: pr.pullRequestId,
@@ -345,9 +339,10 @@ export class AzureService extends GitService {
         isDraft: pr.isDraft,
         comments: threads.value.reduce((count: number, thread: any) => count + (thread.comments?.length || 0), 0),
         reviewCount: reviews.length,
-        additions: details.lastMergeSourceCommit?.changeCounts?.Add || 0,
-        deletions: details.lastMergeSourceCommit?.changeCounts?.Delete || 0,
-        changedFiles: details.lastMergeSourceCommit?.changeCounts?.Edit || 0,
+        additions: details.lastMergeSourceCommit?.changeCounts?.Add || 0, // TODO: fix this
+        deletions: details.lastMergeSourceCommit?.changeCounts?.Delete || 0, // TODO: fix this
+        changedFiles: details.lastMergeSourceCommit?.changeCounts?.Edit || 0, // TODO: fix this
+        locChanged, // TODO: fix this
         labels: pr.labels || [],
         timeToMerge: pr.closedDate && pr.status === 'completed' && pr.mergeStatus === 'succeeded' ?
           (new Date(pr.closedDate).getTime() - new Date(pr.creationDate).getTime()) / (1000 * 60 * 60) :
