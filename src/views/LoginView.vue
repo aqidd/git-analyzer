@@ -65,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, markRaw } from 'vue'
 import GitLabLogin from '@/components/GitLabLogin.vue'
 import GitHubLogin from '@/components/GitHubLogin.vue'
 import AzureLogin from '@/components/AzureLogin.vue'
@@ -111,9 +111,9 @@ const features = [
 ]
 
 const tabs = [
-  { name: GitLabLogin, label: 'GitLab' },
-  { name: GitHubLogin, label: 'GitHub' },
-  { name: AzureLogin, label: 'Azure DevOps' },
+  { name: markRaw(GitLabLogin), label: 'GitLab' },
+  { name: markRaw(GitHubLogin), label: 'GitHub' },
+  { name: markRaw(AzureLogin), label: 'Azure DevOps' },
 ]
 
 const activeTab = ref(GitLabLogin)

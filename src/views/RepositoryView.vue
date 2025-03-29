@@ -173,18 +173,28 @@
             <!-- Branch Stats -->
             <HealthMetricCard
               title="Branch Health"
-              :status="branchStats?.branchHealth"
-              :value="`${branchStats?.healthyBranchCount} / ${branchStats?.totalBranches}`"
+              :status="branchStats?.branchHealth || 'Unknown'"
+              :value="branchStats?.healthyBranchCount !== undefined && branchStats?.totalBranches !== undefined 
+                ? `${branchStats.healthyBranchCount} / ${branchStats.totalBranches}` 
+                : 'N/A'"
               unit="healthy branches"
-              :isHealthy="(branchStats?.healthyBranchCount / branchStats?.totalBranches) > 0.7"
+              :isHealthy="branchStats?.healthyBranchCount !== undefined && branchStats?.totalBranches !== undefined 
+                ? (branchStats.healthyBranchCount / branchStats.totalBranches) > 0.7 
+                : false"
             />
 
             <HealthMetricCard
               title="Stagnant Branches"
-              :status="(branchStats?.stagnantBranchCount / branches.length) <= 0.3 ? 'Healthy' : 'Needs Cleanup'"
+              :status="branchStats?.stagnantBranchCount !== undefined && branches.length > 0 
+                ? (branchStats.stagnantBranchCount / branches.length) <= 0.3 
+                  ? 'Healthy' 
+                  : 'Needs Cleanup' 
+                : 'Unknown'"
               :value="branchStats?.stagnantBranchCount || 0"
               unit="Inactive >30 days"
-              :isHealthy="(branchStats?.stagnantBranchCount / branches.length) <= 0.3"
+              :isHealthy="branchStats?.stagnantBranchCount !== undefined && branches.length > 0 
+                ? (branchStats.stagnantBranchCount / branches.length) <= 0.3 
+                : false"
             />
 
             <!-- Branch Health Score -->
@@ -352,6 +362,12 @@ import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, Branch,
 import type { Repository as GitLabRepository } from '@/types/gitlab'
 import type { Repository as GitHubRepository } from '@/types/github'
 import type { Repository as AzureRepository } from '@/types/azure'
+
+// Define props for the component
+defineProps<{
+  type: string;
+  id: string;
+}>()
 
 type Repository = GitLabRepository | GitHubRepository | AzureRepository
 
