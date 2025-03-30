@@ -60,6 +60,33 @@
           </div>
         </div>
       </div>
+
+      <!-- Need a custom template section -->
+      <div class="mt-16">
+        <div class="grid md:grid-cols-1 items-center">
+          <div class="space-y-6">
+            <h3 class="text-2xl font-bold">Need Customization?</h3>
+            <p class="text-gray-600">If you have an existing metrics to track or need more complex features than our
+              base offerings, we can help you with that. Ping us at flipboxstudio@gmail.com</p>
+          </div>
+        </div>
+
+        <!-- Feature grid -->
+        <div class="grid md:grid-cols-3 gap-4 mt-8">
+          <div class="bg-gray-400 p-8 rounded-lg text-white">
+            <h4 class="text-xl font-bold mb-4">Custom metrics</h4>
+            <p>We'll create new metrics based on your requirement.</p>
+          </div>
+          <div class="bg-red-400 p-8 rounded-lg text-white">
+            <h4 class="text-xl font-bold mb-4">AI customization</h4>
+            <p>We can integrate AI to suit your personalized needs</p>
+          </div>
+          <div class="bg-blue-400 p-8 rounded-lg text-white">
+            <h4 class="text-xl font-bold mb-4">Feature Customization</h4>
+            <p>Need another feature? Let us know</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
