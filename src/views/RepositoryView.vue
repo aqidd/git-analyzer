@@ -87,177 +87,164 @@
             </button>
           </div>
 
-          <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <!-- Row 1 Commit Stats -->
-            <!-- 1. Code Activity Score -->
-            <HealthMetricCard
-              title="Code Activity"
-              :status="commitStats.dailyCommitRate >= 1 ? 'Active' : 'Low Activity'"
-              :value="commitStats.dailyCommitRate.toFixed(1)"
-              unit="commits/day"
-              :isHealthy="commitStats.dailyCommitRate >= 1"
-            />
-            <!-- 2. Number of detailed commit -->
-             <HealthMetricCard
-              title="Detailed Commits"
-              :status="commitStats.commitWithLongDescription > 0 ? 'Active' : 'Low Activity'"
-              :value="commitStats.commitWithLongDescription"
-              unit="commits with long description"
-              :isHealthy="commitStats.commitWithLongDescription > 0"
-            />
-            <!-- 3. Code Churn -->
-            <HealthMetricCard
-              title="Code Growth"
-              :status="codeRatioTrend"
-              :value="commitStats.addRemoveRatio === Infinity ? '∞' : commitStats.addRemoveRatio.toFixed(1)"
-              unit="code added ratio"
-              :isHealthy="commitStats.addRemoveRatio >= 0.5 && commitStats.addRemoveRatio <= 2"
-            />
-            <div class="mb-6"></div>
-
-            <!-- Row 2 Pipeline Stats -->
-            <HealthMetricCard
-              title="Successful Builds"
-              :status="pipelineStats.successfulPipelines > 0 ? 'Good' : 'No Pipelines'"
-              :value="pipelineStats.successfulPipelines"
-              unit="pipelines"
-              :isHealthy="pipelineStats.successfulPipelines > 0"
-            />
-            <HealthMetricCard
-              title="Failed Builds"
-              :status="pipelineStats.failedPipelines === 0 ? 'Perfect' : 'Has Failures'"
-              :value="pipelineStats.failedPipelines"
-              unit="pipelines"
-              :isHealthy="pipelineStats.failedPipelines === 0"
-            />
-            <HealthMetricCard
-              title="Build Success Rate"
-              :status="pipelineStats.successRate >= 80 ? 'Good' : 'Moderate'"
-              :value="`${pipelineStats.successRate.toFixed(1)}%`"
-              unit="percentage of build success"
-              :isHealthy="pipelineStats.successRate >= 80"
-            />
-            <!-- Pipeline Health Score -->
-            <HealthMetricCard
-              title="Pipeline Health"
-              :status="`${pipelineStats.successRate.toFixed(0)}% Success`"
-              :value="pipelineStats.deploymentFrequency.toFixed(1)"
-              unit="deployments/day"
-              :isHealthy="pipelineStats.successRate >= 80"
-            />
-
-            <!-- Contributor Stats -->
-            <HealthMetricCard
-              title="Bus Factor"
-              :status="contributorStats.busFactor > 2 ? 'Healthy' : 'At Risk'"
-              :value="contributorStats.busFactor"
-              unit="contributors"
-              :isHealthy="contributorStats.busFactor > 2"
-            />
-            <HealthMetricCard
-              title="Top Contributor"
-              :status="`${Math.round(contributorStats.totalCommits * (contributorStats.topContributorPercentage / 100))} commits`"
-              :value="contributorStats.topContributor.substring(0, 14) + '...'"
-              :unit="`${contributorStats.topContributorPercentage.toFixed(2)}% of Commits`"
-              :isHealthy="contributorStats.giniCoefficient < 0.4"
-            />
-            <HealthMetricCard
-              title="Commit Distribution"
-              :status="contributorStats.giniCoefficient < 0.4 ? 'Healthy' : 'At Risk'"
-              :value="contributorStats.giniCoefficient.toFixed(2)"
-              unit="Gini Coefficient"
-              :isHealthy="contributorStats.giniCoefficient < 0.4"
-            />
-            <div class="mb-6"></div>
-
-            <!-- Branch Stats -->
-            <HealthMetricCard
-              title="Branch Health"
-              :status="branchStats?.branchHealth || 'Unknown'"
-              :value="branchStats?.healthyBranchCount !== undefined && branchStats?.totalBranches !== undefined 
-                ? `${branchStats.healthyBranchCount} / ${branchStats.totalBranches}` 
-                : 'N/A'"
-              unit="healthy branches"
-              :isHealthy="branchStats?.healthyBranchCount !== undefined && branchStats?.totalBranches !== undefined 
-                ? (branchStats.healthyBranchCount / branchStats.totalBranches) > 0.7 
-                : false"
-            />
-
-            <HealthMetricCard
-              title="Stagnant Branches"
-              :status="branchStats?.stagnantBranchCount !== undefined && branches.length > 0 
-                ? (branchStats.stagnantBranchCount / branches.length) <= 0.3 
-                  ? 'Healthy' 
-                  : 'Needs Cleanup' 
-                : 'Unknown'"
-              :value="branchStats?.stagnantBranchCount || 0"
-              unit="Inactive >30 days"
-              :isHealthy="branchStats?.stagnantBranchCount !== undefined && branches.length > 0 
-                ? (branchStats.stagnantBranchCount / branches.length) <= 0.3 
-                : false"
-            />
-
-            <!-- Branch Health Score -->
-            <HealthMetricCard
-              title="Branch Health"
-              :status="(branchStats?.stagnantBranchCount / branches.length) <= 0.3 ? 'Healthy' : 'Needs Cleanup'"
-              :value="branchStats?.stagnantBranchCount || 0"
-              unit="stagnant branches"
-              :isHealthy="(branchStats?.stagnantBranchCount / branches.length) <= 0.3"
-            />            
-            <div class="mb-6"></div>
-
-            <!-- Pull Request Health Metrics -->
-            <HealthMetricCard
-              title="Total Pull Requests"
-              :status="pullRequestStats?.totalPRs > 0 ? 'Active' : 'No PRs'"
-              :value="pullRequestStats?.totalPRs || 0"
-              unit="pull requests"
-              :isHealthy="pullRequestStats?.totalPRs > 0"
-            />
-            <HealthMetricCard
-              title="PR Frequency"
-              :status="pullRequestStats?.averagePRPerDay >= 2 ? 'Active' : 'Low Activity'"
-              :value="(pullRequestStats?.averagePRPerDay || 0).toFixed(1)"
-              unit="PRs/day"
-              :isHealthy="pullRequestStats?.averagePRPerDay >= 2"
-            />
-            <HealthMetricCard
-              title="Top PR Contributor"
-              :status="pullRequestStats?.topContributor ? 'Active' : 'No Data'"
-              :value="(pullRequestStats?.topContributor || '').substring(0, 14) + '...'"
-              :unit="`${(pullRequestStats?.topContributorPRs || 0)} PRs`"
-              :isHealthy="pullRequestStats?.topContributor !== ''"
-            />
-            <HealthMetricCard
-              title="Top Contributor Rate"
-              :status="pullRequestStats?.topContributorAvgPRPerDay >= 1 ? 'Active' : 'Low Activity'"
-              :value="(pullRequestStats?.topContributorAvgPRPerDay || 0).toFixed(1)"
-              unit="PRs/day"
-              :isHealthy="pullRequestStats?.topContributorAvgPRPerDay >= 1"
-            />
-            <HealthMetricCard
-              title="Average LoC per PR"
-              :status="pullRequestStats?.averageLoCPerPR < 300 ? 'Healthy' : 'Needs Improvement'"
-              :value="(pullRequestStats?.averageLoCPerPR || 0).toFixed(1)"
-              unit="lines/PR"
-              :isHealthy="pullRequestStats?.averageLoCPerPR < 300"
-            />
-
-            <!-- Stagnant Branches List -->
-            <div v-if="branchStats?.stagnantBranches.length" class="mb-6 col-span-full">
-              <h3 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Stagnant Branches</h3>
-              <div class="space-y-2">
-                <div v-for="branch in branchStats.stagnantBranches" :key="branch.name"
-                  class="flex items-center justify-between rounded-lg bg-gray-50 p-2 dark:bg-gray-700">
-                  <span class="font-medium text-gray-900 dark:text-white">{{ branch.name }}</span>
-                  <span class="text-sm text-gray-500 dark:text-gray-400">{{ branch.daysSinceLastCommit }} days
-                    old</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
+          <AccordionWrapper
+            :sections="[
+              {
+                title: `Commit Stats`,
+                metrics: [
+                  {
+                    title: 'Code Activity',
+                    status: commitStats.dailyCommitRate >= 1 ? 'Active' : 'Low Activity',
+                    value: commitStats.dailyCommitRate.toFixed(1),
+                    unit: 'commits/day',
+                    isHealthy: commitStats.dailyCommitRate >= 1
+                  },
+                  {
+                    title: 'Detailed Commits',
+                    status: commitStats.commitWithLongDescription > 0 ? 'Active' : 'Low Activity',
+                    value: commitStats.commitWithLongDescription,
+                    unit: 'commits with long description',
+                    isHealthy: commitStats.commitWithLongDescription > 0
+                  },
+                  {
+                    title: 'Code Growth',
+                    status: codeRatioTrend,
+                    value: commitStats.addRemoveRatio === Infinity ? '∞' : commitStats.addRemoveRatio.toFixed(1),
+                    unit: 'code added ratio',
+                    isHealthy: commitStats.addRemoveRatio >= 0.5 && commitStats.addRemoveRatio <= 2
+                  }
+                ]
+              },
+              {
+                title: `Pipeline Stats`,
+                metrics: [
+                  {
+                    title: 'Successful Builds',
+                    status: pipelineStats.successfulPipelines > 0 ? 'Good' : 'No Pipelines',
+                    value: pipelineStats.successfulPipelines,
+                    unit: 'pipelines',
+                    isHealthy: pipelineStats.successfulPipelines > 0
+                  },
+                  {
+                    title: 'Failed Builds',
+                    status: pipelineStats.failedPipelines === 0 ? 'Perfect' : 'Has Failures',
+                    value: pipelineStats.failedPipelines,
+                    unit: 'pipelines',
+                    isHealthy: pipelineStats.failedPipelines === 0
+                  },
+                  {
+                    title: 'Build Success Rate',
+                    status: pipelineStats.successRate >= 80 ? 'Good' : 'Moderate',
+                    value: `${pipelineStats.successRate.toFixed(1)}%`,
+                    unit: 'percentage of build success',
+                    isHealthy: pipelineStats.successRate >= 80
+                  },
+                  {
+                    title: 'Pipeline Health',
+                    status: `${pipelineStats.successRate.toFixed(0)}% Success`,
+                    value: pipelineStats.deploymentFrequency.toFixed(1),
+                    unit: 'deployments/day',
+                    isHealthy: pipelineStats.successRate >= 80
+                  }
+                ]
+              },
+              {
+                title: `Contributor Stats`,
+                metrics: [
+                  {
+                    title: 'Bus Factor',
+                    status: contributorStats.busFactor > 2 ? 'Healthy' : 'At Risk',
+                    value: contributorStats.busFactor,
+                    unit: 'contributors',
+                    isHealthy: contributorStats.busFactor > 2
+                  },
+                  {
+                    title: 'Top Contributor',
+                    status: `${Math.round(contributorStats.totalCommits * (contributorStats.topContributorPercentage / 100))} commits`,
+                    value: contributorStats.topContributor.substring(0, 14) + '...',
+                    unit: `${contributorStats.topContributorPercentage.toFixed(2)}% of Commits`,
+                    isHealthy: contributorStats.giniCoefficient < 0.4
+                  },
+                  {
+                    title: 'Commit Distribution',
+                    status: contributorStats.giniCoefficient < 0.4 ? 'Healthy' : 'At Risk',
+                    value: contributorStats.giniCoefficient.toFixed(2),
+                    unit: 'Gini Coefficient',
+                    isHealthy: contributorStats.giniCoefficient < 0.4
+                  }
+                ]
+              },
+              {
+                title: `Branch Stats`,
+                metrics: [
+                  {
+                    title: 'Branch Health',
+                    status: branchStats?.branchHealth || 'Unknown',
+                    value: branchStats?.healthyBranchCount !== undefined && branchStats?.totalBranches !== undefined
+                      ? `${branchStats.healthyBranchCount} / ${branchStats.totalBranches}`
+                      : 'N/A',
+                    unit: 'healthy branches',
+                    isHealthy: branchStats?.healthyBranchCount !== undefined && branchStats?.totalBranches !== undefined
+                      ? (branchStats.healthyBranchCount / branchStats.totalBranches) > 0.7
+                      : false
+                  },
+                  {
+                    title: 'Stagnant Branches',
+                    status: branchStats?.stagnantBranchCount !== undefined && branches.length > 0
+                      ? (branchStats.stagnantBranchCount / branches.length) <= 0.3
+                        ? 'Healthy'
+                        : 'Needs Cleanup'
+                      : 'Unknown',
+                    value: branchStats?.stagnantBranchCount || 0,
+                    unit: 'Inactive >30 days',
+                    isHealthy: branchStats?.stagnantBranchCount !== undefined && branches.length > 0
+                      ? (branchStats.stagnantBranchCount / branches.length) <= 0.3
+                      : false
+                  }
+                ]
+              },
+              {
+                title: `Pull Request Stats`,
+                metrics: [
+                  {
+                    title: 'Total Pull Requests',
+                    status: pullRequestStats?.totalPRs > 0 ? 'Active' : 'No PRs',
+                    value: pullRequestStats?.totalPRs || 0,
+                    unit: 'pull requests',
+                    isHealthy: pullRequestStats?.totalPRs > 0
+                  },
+                  {
+                    title: 'PR Frequency',
+                    status: pullRequestStats?.averagePRPerDay >= 2 ? 'Active' : 'Low Activity',
+                    value: (pullRequestStats?.averagePRPerDay || 0).toFixed(1),
+                    unit: 'PRs/day',
+                    isHealthy: pullRequestStats?.averagePRPerDay >= 2
+                  },
+                  {
+                    title: 'Top PR Contributor',
+                    status: pullRequestStats?.topContributor ? 'Active' : 'No Data',
+                    value: (pullRequestStats?.topContributor || '').substring(0, 14) + '...',
+                    unit: `${(pullRequestStats?.topContributorPRs || 0)} PRs`,
+                    isHealthy: pullRequestStats?.topContributor !== ''
+                  },
+                  {
+                    title: 'Top Contributor Rate',
+                    status: pullRequestStats?.topContributorAvgPRPerDay >= 1 ? 'Active' : 'Low Activity',
+                    value: (pullRequestStats?.topContributorAvgPRPerDay || 0).toFixed(1),
+                    unit: 'PRs/day',
+                    isHealthy: pullRequestStats?.topContributorAvgPRPerDay >= 1
+                  },
+                  {
+                    title: 'Average LoC per PR',
+                    status: pullRequestStats?.averageLoCPerPR < 300 ? 'Healthy' : 'Needs Improvement',
+                    value: (pullRequestStats?.averageLoCPerPR || 0).toFixed(1),
+                    unit: 'lines/PR',
+                    isHealthy: pullRequestStats?.averageLoCPerPR < 300
+                  }
+                ]
+              }
+            ]"
+          />
         </section>
 
         <!-- Repository Details -->
@@ -356,8 +343,8 @@ import { useGitlabStore } from '@/stores/gitlab.store'
 import { useGithubStore } from '@/stores/github.store'
 import { useAzureStore } from '@/stores/azure.store'
 import { Analyzer } from '@/services/analyzer.service'
-import HealthMetricCard from '@/components/HealthMetricCard.vue'
 import PaginatedDetails from '@/components/PaginatedDetails.vue'
+import AccordionWrapper from '@/components/AccordionWrapper.vue'
 import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, Branch, PullRequest } from '@/types/repository'
 import type { Repository as GitLabRepository } from '@/types/gitlab'
 import type { Repository as GitHubRepository } from '@/types/github'
@@ -485,7 +472,16 @@ const pullRequestStats = ref<PullRequestStats>({
 
 const analyzer = new Analyzer()
 
-const pipelineStats = computed(() => analyzer.analyzePipelines(pipelines.value, timeFilter.value))
+const pipelineStats = computed(() => {
+  const stats = analyzer.analyzePipelines(pipelines.value, timeFilter.value)
+  const healthyMetricsCount = [
+    stats.successfulPipelines > 0,
+    stats.failedPipelines === 0,
+    stats.successRate >= 80,
+    stats.deploymentFrequency > 0
+  ].filter(Boolean).length
+  return { ...stats, healthyMetricsCount, totalMetricsCount: 4 }
+})
 const commitStats = computed(() => analyzer.analyzeCommits(commits.value, timeFilter.value))
 const contributorStats = computed(() => analyzer.analyzeContributors(contributors.value))
 
