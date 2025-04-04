@@ -345,18 +345,13 @@ import { useAzureStore } from '@/stores/azure.store'
 import { Analyzer } from '@/services/analyzer.service'
 import PaginatedDetails from '@/components/PaginatedDetails.vue'
 import AccordionWrapper from '@/components/AccordionWrapper.vue'
-import type { TimeFilter, Commit, Pipeline, Contributor, RepositoryFile, Branch, PullRequest } from '@/types/repository'
-import type { Repository as GitLabRepository } from '@/types/gitlab'
-import type { Repository as GitHubRepository } from '@/types/github'
-import type { Repository as AzureRepository } from '@/types/azure'
+import type { TimeFilter, Commit, Pipeline, Contributor, Branch, PullRequest } from '@/types/repository'
 
 // Define props for the component
 defineProps<{
   type: string;
   id: string;
 }>()
-
-type Repository = GitLabRepository | GitHubRepository | AzureRepository
 
 const route = useRoute()
 const router = useRouter()
@@ -368,23 +363,14 @@ const azureStore = useAzureStore()
 const error = ref<string | null>(null)
 const loading = ref(false)
 const showMetricsInfo = ref(false)
-const repository = ref<Repository | null>(null)
+const repository = ref(null)
 const commits = ref<Commit[]>([])
 const pipelines = ref<Pipeline[]>([])
 const pullRequests = ref<PullRequest[]>([])
 const contributors = ref<Contributor[]>([])
-const files = ref<RepositoryFile[]>([])
 const branches = ref<Branch[]>([])
 const branchStats = ref<any>(null)
 
-/**
- * Health metrics configuration and thresholds.
- * Each metric corresponds to one or more HealthMetricCard components in the UI.
- * Current Implementation Status:
- * ✓ - Fully Implemented
- * ⚠ - Partially Implemented
- * ⨯ - Not Yet Implemented
- */
 const healthMetrics = [
   {
     name: 'Code Activity',
@@ -449,19 +435,10 @@ const timeFilter = ref<TimeFilter>({
   endDate: new Date().toISOString().split('T')[0]
 })
 
-interface PullRequestStats {
-  totalPRs: number
-  averagePRPerDay: number
-  topContributor: string
-  topContributorPRs: number
-  topContributorAvgPRPerDay: number
-  averageLoCPerPR: number
-}
-
 const selectedContributor = ref('')
 const uniqueContributors = ref<string[]>([])
 
-const pullRequestStats = ref<PullRequestStats>({
+const pullRequestStats = ref({
   totalPRs: 0,
   averagePRPerDay: 0,
   topContributor: '',
@@ -485,48 +462,18 @@ const pipelineStats = computed(() => {
 const commitStats = computed(() => analyzer.analyzeCommits(commits.value, timeFilter.value))
 const contributorStats = computed(() => analyzer.analyzeContributors(contributors.value))
 
-// Code ratio styling
-const codeRatioColor = computed(() => {
-  const ratio = commitStats.value.addRemoveRatio
-  if (ratio === Infinity) return 'rounded-lg bg-emerald-50 p-4 dark:bg-emerald-900'
-  if (ratio > 1.5) return 'rounded-lg bg-green-50 p-4 dark:bg-green-900'
-  if (ratio >= 0.75) return 'rounded-lg bg-yellow-50 p-4 dark:bg-yellow-900'
-  return 'rounded-lg bg-red-50 p-4 dark:bg-red-900'
-})
-
-const codeRatioTextColor = computed(() => {
-  const ratio = commitStats.value.addRemoveRatio
-  if (ratio === Infinity) return 'text-emerald-600 dark:text-emerald-200'
-  if (ratio > 1.5) return 'text-green-600 dark:text-green-200'
-  if (ratio >= 0.75) return 'text-yellow-600 dark:text-yellow-200'
-  return 'text-red-600 dark:text-red-200'
-})
-
-const codeRatioValueColor = computed(() => {
-  const ratio = commitStats.value.addRemoveRatio
-  if (ratio === Infinity) return 'text-emerald-700 dark:text-emerald-100'
-  if (ratio > 1.5) return 'text-green-700 dark:text-green-100'
-  if (ratio >= 0.75) return 'text-yellow-700 dark:text-yellow-100'
-  return 'text-red-700 dark:text-red-100'
-})
-
 const codeRatioTrend = computed(() => {
-  const ratio = commitStats.value.addRemoveRatio
-  if (ratio === Infinity) return '(Growing Fast)'
-  if (ratio > 1.5) return '(Growing)'
-  if (ratio >= 0.75) return '(Stable)'
-  return '(Shrinking)'
-})
+  if (commitStats.value.addRemoveRatio === Infinity) {
+    return 'Unbalanced';
+  } else if (commitStats.value.addRemoveRatio >= 0.5 && commitStats.value.addRemoveRatio <= 2) {
+    return 'Balanced';
+  } else if (commitStats.value.addRemoveRatio < 0.5) {
+    return 'More Removals';
+  } else {
+    return 'More Additions';
+  }
+});
 
-const formatSize = (bytes: number) => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
-}
-
-// Updated: Added contributor filtering
 const loadData = async () => {
   const { id, type } = route.params
   error.value = null
@@ -541,7 +488,6 @@ const loadData = async () => {
       commits.value = await gitlabStore.service.getCommits(projectId, timeFilter.value)
       pipelines.value = await gitlabStore.service.getPipelines(projectId, timeFilter.value)
       contributors.value = await gitlabStore.service.getContributors(projectId, timeFilter.value)
-      files.value = await gitlabStore.service.getFiles(projectId)
       branches.value = await gitlabStore.service.getBranches(String(id), String(id))
       pullRequests.value = await gitlabStore.service.getPullRequests(projectId, timeFilter.value)
     } else if (type === 'github') {
@@ -555,7 +501,6 @@ const loadData = async () => {
       commits.value = await githubStore.service.getCommits(owner, repo, timeFilter.value)
       pipelines.value = await githubStore.service.getPipelines(owner, repo, timeFilter.value)
       contributors.value = await githubStore.service.getContributors(owner, repo, timeFilter.value)
-      files.value = await githubStore.service.getFiles(owner, repo)
       branches.value = await githubStore.service.getBranches(owner, repo)
       pullRequests.value = await githubStore.service.getPullRequests(owner, repo, timeFilter.value)
     } else if (type === 'azure') {
@@ -572,7 +517,6 @@ const loadData = async () => {
       commits.value = await azureStore.service.getCommits(projectId, id, timeFilter.value)
       pipelines.value = await azureStore.service.getPipelines(projectId, id, timeFilter.value)
       contributors.value = await azureStore.service.getContributors(projectId, id)
-      files.value = await azureStore.service.getFiles(projectId, id)
       branches.value = await azureStore.service.getBranches(projectId, id)
       pullRequests.value = await azureStore.service.getPullRequests(projectId, id, timeFilter.value)
     }
@@ -650,7 +594,6 @@ const loadData = async () => {
     commits.value = []
     pipelines.value = []
     contributors.value = []
-    files.value = []
     pullRequests.value = []
     uniqueContributors.value = []
   } finally {
