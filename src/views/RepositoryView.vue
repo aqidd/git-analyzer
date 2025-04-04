@@ -75,107 +75,111 @@
         <section class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
           <div class="mb-6 flex items-center justify-between">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Repository Health Analysis</h2>
-            <button @click="showMetricsInfo = true"
-              class="inline-flex items-center gap-2 rounded-md bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900 dark:text-indigo-200">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 16v-4" />
-                <path d="M12 8h.01" />
-              </svg>
-              View Metrics Info
-            </button>
           </div>
 
           <AccordionWrapper
             :sections="[
               {
                 title: `Commit Stats`,
+                overview: `Daily Commit Rate: ${commitStats.dailyCommitRate.toFixed(1)} commits/day`,
                 metrics: [
                   {
                     title: 'Code Activity',
                     status: commitStats.dailyCommitRate >= 1 ? 'Active' : 'Low Activity',
                     value: commitStats.dailyCommitRate.toFixed(1),
                     unit: 'commits/day',
-                    isHealthy: commitStats.dailyCommitRate >= 1
+                    isHealthy: commitStats.dailyCommitRate >= 1,
+                    description: 'Measures the frequency and consistency of code changes in the repository.'
                   },
                   {
                     title: 'Detailed Commits',
                     status: commitStats.commitWithLongDescription > 0 ? 'Active' : 'Low Activity',
                     value: commitStats.commitWithLongDescription,
                     unit: 'commits with long description',
-                    isHealthy: commitStats.commitWithLongDescription > 0
+                    isHealthy: commitStats.commitWithLongDescription > 0,
+                    description: 'Tracks the number of commits with detailed descriptions.'
                   },
                   {
                     title: 'Code Growth',
                     status: codeRatioTrend,
                     value: commitStats.addRemoveRatio === Infinity ? '∞' : commitStats.addRemoveRatio.toFixed(1),
                     unit: 'code added ratio',
-                    isHealthy: commitStats.addRemoveRatio >= 0.5 && commitStats.addRemoveRatio <= 2
+                    isHealthy: commitStats.addRemoveRatio >= 0.5 && commitStats.addRemoveRatio <= 2,
+                    description: 'Evaluates the balance between code additions and removals.'
                   }
                 ]
               },
               {
                 title: `Pipeline Stats`,
+                overview: `Success Rate: ${pipelineStats.successRate.toFixed(1)}%, Deployments: ${pipelineStats.deploymentFrequency.toFixed(1)}/day`,
                 metrics: [
                   {
                     title: 'Successful Builds',
                     status: pipelineStats.successfulPipelines > 0 ? 'Good' : 'No Pipelines',
                     value: pipelineStats.successfulPipelines,
                     unit: 'pipelines',
-                    isHealthy: pipelineStats.successfulPipelines > 0
+                    isHealthy: pipelineStats.successfulPipelines > 0,
+                    description: 'Counts the number of successful CI/CD pipeline builds.'
                   },
                   {
                     title: 'Failed Builds',
                     status: pipelineStats.failedPipelines === 0 ? 'Perfect' : 'Has Failures',
                     value: pipelineStats.failedPipelines,
                     unit: 'pipelines',
-                    isHealthy: pipelineStats.failedPipelines === 0
+                    isHealthy: pipelineStats.failedPipelines === 0,
+                    description: 'Tracks the number of failed CI/CD pipeline builds.'
                   },
                   {
                     title: 'Build Success Rate',
                     status: pipelineStats.successRate >= 80 ? 'Good' : 'Moderate',
                     value: `${pipelineStats.successRate.toFixed(1)}%`,
                     unit: 'percentage of build success',
-                    isHealthy: pipelineStats.successRate >= 80
+                    isHealthy: pipelineStats.successRate >= 80,
+                    description: 'Measures the percentage of successful builds in the CI/CD pipeline.'
                   },
                   {
                     title: 'Pipeline Health',
                     status: `${pipelineStats.successRate.toFixed(0)}% Success`,
                     value: pipelineStats.deploymentFrequency.toFixed(1),
                     unit: 'deployments/day',
-                    isHealthy: pipelineStats.successRate >= 80
+                    isHealthy: pipelineStats.successRate >= 80,
+                    description: 'Evaluates the frequency and reliability of deployments.'
                   }
                 ]
               },
               {
                 title: `Contributor Stats`,
+                overview: `Bus Factor: ${contributorStats.busFactor}, Top Contributor: ${contributorStats.topContributor.substring(0, 14)}...`,
                 metrics: [
                   {
                     title: 'Bus Factor',
                     status: contributorStats.busFactor > 2 ? 'Healthy' : 'At Risk',
                     value: contributorStats.busFactor,
                     unit: 'contributors',
-                    isHealthy: contributorStats.busFactor > 2
+                    isHealthy: contributorStats.busFactor > 2,
+                    description: 'Assesses the risk of knowledge concentration among contributors.'
                   },
                   {
                     title: 'Top Contributor',
                     status: `${Math.round(contributorStats.totalCommits * (contributorStats.topContributorPercentage / 100))} commits`,
                     value: contributorStats.topContributor.substring(0, 14) + '...',
                     unit: `${contributorStats.topContributorPercentage.toFixed(2)}% of Commits`,
-                    isHealthy: contributorStats.giniCoefficient < 0.4
+                    isHealthy: contributorStats.giniCoefficient < 0.4,
+                    description: 'Identifies the contributor with the highest number of commits.'
                   },
                   {
                     title: 'Commit Distribution',
                     status: contributorStats.giniCoefficient < 0.4 ? 'Healthy' : 'At Risk',
                     value: contributorStats.giniCoefficient.toFixed(2),
                     unit: 'Gini Coefficient',
-                    isHealthy: contributorStats.giniCoefficient < 0.4
+                    isHealthy: contributorStats.giniCoefficient < 0.4,
+                    description: 'Analyzes the distribution of commits among contributors.'
                   }
                 ]
               },
               {
                 title: `Branch Stats`,
+                overview: `Healthy Branches: ${branchStats?.healthyBranchCount || 0}/${branchStats?.totalBranches || 0}, Stagnant Branches: ${branchStats?.stagnantBranchCount || 0}`,
                 metrics: [
                   {
                     title: 'Branch Health',
@@ -186,7 +190,8 @@
                     unit: 'healthy branches',
                     isHealthy: branchStats?.healthyBranchCount !== undefined && branchStats?.totalBranches !== undefined
                       ? (branchStats.healthyBranchCount / branchStats.totalBranches) > 0.7
-                      : false
+                      : false,
+                    description: 'Evaluates the health of branches based on activity and merges.'
                   },
                   {
                     title: 'Stagnant Branches',
@@ -199,51 +204,59 @@
                     unit: 'Inactive >30 days',
                     isHealthy: branchStats?.stagnantBranchCount !== undefined && branches.length > 0
                       ? (branchStats.stagnantBranchCount / branches.length) <= 0.3
-                      : false
+                      : false,
+                    description: 'Tracks the number of branches inactive for over 30 days.'
                   }
                 ]
               },
               {
                 title: `Pull Request Stats`,
+                overview: `Total PRs: ${pullRequestStats?.totalPRs || 0}, Average PRs/day: ${(pullRequestStats?.averagePRPerDay || 0).toFixed(1)}`,
                 metrics: [
                   {
                     title: 'Total Pull Requests',
                     status: pullRequestStats?.totalPRs > 0 ? 'Active' : 'No PRs',
                     value: pullRequestStats?.totalPRs || 0,
                     unit: 'pull requests',
-                    isHealthy: pullRequestStats?.totalPRs > 0
+                    isHealthy: pullRequestStats?.totalPRs > 0,
+                    description: 'Counts the total number of pull requests in the repository.'
                   },
                   {
                     title: 'PR Frequency',
                     status: pullRequestStats?.averagePRPerDay >= 2 ? 'Active' : 'Low Activity',
                     value: (pullRequestStats?.averagePRPerDay || 0).toFixed(1),
                     unit: 'PRs/day',
-                    isHealthy: pullRequestStats?.averagePRPerDay >= 2
+                    isHealthy: pullRequestStats?.averagePRPerDay >= 2,
+                    description: 'Measures the average number of pull requests per day.'
                   },
                   {
                     title: 'Top PR Contributor',
                     status: pullRequestStats?.topContributor ? 'Active' : 'No Data',
                     value: (pullRequestStats?.topContributor || '').substring(0, 14) + '...',
                     unit: `${(pullRequestStats?.topContributorPRs || 0)} PRs`,
-                    isHealthy: pullRequestStats?.topContributor !== ''
+                    isHealthy: pullRequestStats?.topContributor !== '',
+                    description: 'Identifies the contributor with the highest number of pull requests.'
                   },
                   {
                     title: 'Top Contributor Rate',
                     status: pullRequestStats?.topContributorAvgPRPerDay >= 1 ? 'Active' : 'Low Activity',
                     value: (pullRequestStats?.topContributorAvgPRPerDay || 0).toFixed(1),
                     unit: 'PRs/day',
-                    isHealthy: pullRequestStats?.topContributorAvgPRPerDay >= 1
+                    isHealthy: pullRequestStats?.topContributorAvgPRPerDay >= 1,
+                    description: 'Measures the average pull request rate of the top contributor.'
                   },
                   {
                     title: 'Average LoC per PR',
                     status: pullRequestStats?.averageLoCPerPR < 300 ? 'Healthy' : 'Needs Improvement',
                     value: (pullRequestStats?.averageLoCPerPR || 0).toFixed(1),
                     unit: 'lines/PR',
-                    isHealthy: pullRequestStats?.averageLoCPerPR < 300
+                    isHealthy: pullRequestStats?.averageLoCPerPR < 300,
+                    description: 'Evaluates the average lines of code per pull request.'
                   }
                 ]
               }
             ]"
+            @show-metric-info="showMetricInfo"
           />
         </section>
 
@@ -262,7 +275,7 @@
     </div>
   </div>
 
-  <!-- Health Metrics Info Dialog -->
+  <!-- Metric Info Dialog -->
   <TransitionRoot appear :show="showMetricsInfo" as="template">
     <Dialog as="div" @close="showMetricsInfo = false" class="relative z-10">
       <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0" enter-to="opacity-100"
@@ -278,52 +291,20 @@
             <DialogPanel
               class="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all dark:bg-gray-800">
               <DialogTitle as="h3" class="text-lg font-medium leading-6 text-gray-900 dark:text-white">
-                Repository Health Metrics
+                {{ selectedMetric?.title }}
               </DialogTitle>
               <div class="mt-4 space-y-4">
-                <div v-for="metric in healthMetrics" :key="metric.name"
-                  class="rounded-lg bg-gray-50 p-4 dark:bg-gray-700">
-                  <div class="flex items-center justify-between">
-                    <h4 class="font-medium text-gray-900 dark:text-white">{{ metric.name }}</h4>
-                    <span :class="[
-                      'px-2 py-1 text-xs font-medium rounded-full',
-                      metric.implementation.startsWith('✓')
-                        ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
-                        : metric.implementation.startsWith('⚠')
-                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
-                          : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
-                    ]">
-                      {{ metric.implementation.split(' ')[0] }} <!-- Show just the status icon -->
-                    </span>
-                  </div>
-                  <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ metric.description }}</p>
-                  
-                  <!-- Implementation Details -->
-                  <div class="mt-3 rounded bg-gray-100 p-3 dark:bg-gray-600">
-                    <p class="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-line">
-                      {{ metric.implementation.split('\n').slice(1).join('\n') }} <!-- Show implementation details without status -->
-                    </p>
-                  </div>
-
-                  <!-- Good/Bad Criteria -->
-                  <div class="mt-3 grid grid-cols-2 gap-3">
-                    <div class="rounded bg-green-50 p-2 dark:bg-green-900/30">
-                      <span class="text-xs font-medium text-green-700 dark:text-green-300">Good Criteria</span>
-                      <p class="mt-1 text-sm text-green-600 dark:text-green-200">{{ metric.good }}</p>
-                    </div>
-                    <div class="rounded bg-red-50 p-2 dark:bg-red-900/30">
-                      <span class="text-xs font-medium text-red-700 dark:text-red-300">Bad Criteria</span>
-                      <p class="mt-1 text-sm text-red-600 dark:text-red-200">{{ metric.bad }}</p>
-                    </div>
-                  </div>
-                </div>
+                <ul class="list-disc pl-5 text-sm text-gray-600 dark:text-gray-300">
+                  <li v-for="(description, index) in selectedMetric?.description" :key="index">
+                    <strong>{{ description.title  }}</strong>: {{ description.description }}
+                  </li>
+                </ul>
               </div>
-
               <div class="mt-6 flex justify-end">
                 <button type="button"
                   class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 transition-colors"
                   @click="showMetricsInfo = false">
-                  <span class="mr-2">Close</span>
+                  <span class="mr-2">Close</span> 
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
               </div>
@@ -363,6 +344,7 @@ const azureStore = useAzureStore()
 const error = ref<string | null>(null)
 const loading = ref(false)
 const showMetricsInfo = ref(false)
+const selectedMetric = ref<null | { title: string; description: any }>(null)
 const repository = ref(null)
 const commits = ref<Commit[]>([])
 const pipelines = ref<Pipeline[]>([])
@@ -370,65 +352,6 @@ const pullRequests = ref<PullRequest[]>([])
 const contributors = ref<Contributor[]>([])
 const branches = ref<Branch[]>([])
 const branchStats = ref<any>(null)
-
-const healthMetrics = [
-  {
-    name: 'Code Activity',
-    description: 'Measures the frequency and consistency of code changes in the repository.',
-    implementation: '✓ Implemented via commitStats with three metrics:\n- Daily commit rate (commits/day)\n- Detailed commits count\n- Code growth ratio',
-    good: 'Daily commit rate ≥1, has detailed commits, code growth ratio between 0.5-2',
-    bad: 'Daily commit rate <1, no detailed commits, or unbalanced code growth'
-  },
-  {
-    name: 'Pipeline Health',
-    description: 'Assesses CI/CD pipeline efficiency and reliability.',
-    implementation: '✓ Implemented via pipelineStats with four metrics:\n- Successful builds count\n- Failed builds count\n- Build success rate (%)\n- Deployment frequency',
-    good: 'Success rate ≥80%, has successful builds, deployment frequency >0',
-    bad: 'Success rate <80%, has failed builds, or no deployments'
-  },
-  {
-    name: 'Team Health',
-    description: 'Analyzes work distribution and collaboration patterns.',
-    implementation: '✓ Implemented via contributorStats with three metrics:\n- Bus factor (>2 is healthy)\n- Top contributor percentage\n- Gini coefficient (<0.4 is healthy)',
-    good: 'Bus factor >2, balanced contributions (Gini <0.4)',
-    bad: 'Bus factor ≤2, or concentrated contributions (Gini ≥0.4)'
-  },
-  {
-    name: 'Branch Health',
-    description: 'Evaluates branch management and maintenance.',
-    implementation: '✓ Implemented via branchStats with metrics:\n- Healthy vs total branches ratio\n- Stagnant branch count\n- Days since last commit per branch',
-    good: 'Stagnant branches ≤30% of total, regular merges to main',
-    bad: 'Stagnant branches >30% of total, inactive branches >30 days'
-  },
-  {
-    name: 'Code Quality',
-    description: 'Evaluates code maintainability and test coverage.',
-    implementation: '⨯ Not yet implemented. Planned metrics:\n- Test coverage percentage\n- Cyclomatic complexity\n- Code duplication percentage\n- Style violations count',
-    good: 'Test coverage >80%, complexity <10, duplication <5%',
-    bad: 'Test coverage <80%, complexity >10, duplication >5%'
-  },
-  {
-    name: 'PR Velocity',
-    description: 'Measures pull request workflow efficiency.',
-    implementation: '⨯ Not yet implemented. Planned metrics:\n- Average review time\n- Merge success rate\n- PR size distribution\n- Review participation rate',
-    good: 'Review time <24h, merge rate >90%, PRs <400 lines',
-    bad: 'Review time >24h, merge rate <90%, PRs >400 lines'
-  },
-  {
-    name: 'Documentation Health',
-    description: 'Assesses documentation quality and currency.',
-    implementation: '⨯ Not yet implemented. Planned metrics:\n- README freshness\n- API documentation coverage\n- Inline documentation ratio\n- Documentation update frequency',
-    good: 'Current docs, clear guidelines, regular updates',
-    bad: 'Outdated docs, missing guidelines, infrequent updates'
-  },
-  {
-    name: 'Security Health',
-    description: 'Evaluates repository security measures.',
-    implementation: '⨯ Not yet implemented. Planned metrics:\n- Vulnerability count\n- Average remediation time\n- Dependency freshness\n- Security policy compliance',
-    good: 'No critical vulnerabilities, quick fixes, current deps',
-    bad: 'Open vulnerabilities, slow fixes, outdated deps'
-  }
-]
 
 const timeFilter = ref<TimeFilter>({
   startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -599,6 +522,11 @@ const loadData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const showMetricInfo = (metric: { title: string; description: any }) => {
+  selectedMetric.value = metric
+  showMetricsInfo.value = true
 }
 
 onMounted(async () => {
