@@ -3,7 +3,7 @@
 // Tests commit analysis, pipeline analysis, branch analysis, and contributor analysis
 
 import { describe, it, expect } from 'vitest'
-import { Analyzer } from '../analyzer'
+import { Analyzer } from '../analyzer.service'
 import type { Commit, Pipeline, Branch, Contributor } from '@/types/repository'
 
 describe('Analyzer', () => {
