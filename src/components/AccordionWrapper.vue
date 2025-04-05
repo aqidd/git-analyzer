@@ -13,7 +13,7 @@
           <button
             @click.stop="$emit('show-metric-info', { 
               title: section.title, 
-              description: section.metrics.map(metric => ({ title: metric.title, description: metric.description })) 
+              info: section.metrics.map(metric => ({ title: metric.title, description: metric.description, source: metric.source })) 
             })"
             class="text-indigo-600 hover:underline"
           >
@@ -57,6 +57,7 @@ interface Metric {
   unit: string
   isHealthy: boolean
   description: string
+  source: string
 }
 
 interface Section {

@@ -11,7 +11,7 @@ export class Analyzer {
         
         return {
             dailyCommitRate: totalDays > 0 ? (commits.length / totalDays) : 0,
-            commitWithLongDescription: commits.filter(c => c.message.length > 50).length,
+            commitWithLongDescription: commits.filter(c => c.message.length > 30).length,
             addRemoveRatio: totalRemoved > 0 ? (totalAdded / totalRemoved) : totalAdded > 0 ? Infinity : 1
         }
     }
@@ -90,7 +90,7 @@ export class Analyzer {
             totalContributors: contributors.length,
             totalCommits,
             busFactor,
-            topContributor: sortedContributors[0]?.name || 'N/A',
+            topContributor: sortedContributors[0]?.name || 'N/A', // TODO: also consider number of PR created
             topContributorPercentage: totalCommits > 0 ? ((sortedContributors[0]?.commits || 0) / totalCommits * 100) : 0,
             giniCoefficient: parseFloat(giniCoefficient.toFixed(3)),
             commitDistribution: this.getCommitDistributionCategory(giniCoefficient)

@@ -89,7 +89,8 @@
                     value: commitStats.dailyCommitRate.toFixed(1),
                     unit: 'commits/day',
                     isHealthy: commitStats.dailyCommitRate >= 1,
-                    description: 'Measures the frequency and consistency of code changes in the repository.'
+                    description: 'Measures the frequency and consistency of code changes in the repository.',
+                    source: 'https://aloa.co/playbook/commit-frequency'
                   },
                   {
                     title: 'Detailed Commits',
@@ -97,7 +98,8 @@
                     value: commitStats.commitWithLongDescription,
                     unit: 'commits with long description',
                     isHealthy: commitStats.commitWithLongDescription > 0,
-                    description: 'Tracks the number of commits with detailed descriptions.'
+                    description: 'Tracks the number of commits with detailed descriptions.',
+                    source: 'https://theforeman.org/handbook.html#Commitmessages'
                   },
                   {
                     title: 'Code Growth',
@@ -105,7 +107,8 @@
                     value: commitStats.addRemoveRatio === Infinity ? '∞' : commitStats.addRemoveRatio.toFixed(1),
                     unit: 'code added ratio',
                     isHealthy: commitStats.addRemoveRatio >= 0.5 && commitStats.addRemoveRatio <= 2,
-                    description: 'Evaluates the balance between code additions and removals.'
+                    description: 'Evaluates the balance between code additions and removals.',
+                    source: 'https://linearb.io/blog/what-is-code-churn'
                   }
                 ]
               },
@@ -113,37 +116,41 @@
                 title: `Pipeline Stats`,
                 overview: `Success Rate: ${pipelineStats.successRate.toFixed(1)}%, Deployments: ${pipelineStats.deploymentFrequency.toFixed(1)}/day`,
                 metrics: [
-                  {
-                    title: 'Successful Builds',
-                    status: pipelineStats.successfulPipelines > 0 ? 'Good' : 'No Pipelines',
-                    value: pipelineStats.successfulPipelines,
-                    unit: 'pipelines',
-                    isHealthy: pipelineStats.successfulPipelines > 0,
-                    description: 'Counts the number of successful CI/CD pipeline builds.'
-                  },
-                  {
-                    title: 'Failed Builds',
-                    status: pipelineStats.failedPipelines === 0 ? 'Perfect' : 'Has Failures',
-                    value: pipelineStats.failedPipelines,
-                    unit: 'pipelines',
-                    isHealthy: pipelineStats.failedPipelines === 0,
-                    description: 'Tracks the number of failed CI/CD pipeline builds.'
-                  },
+                  // {
+                  //   title: 'Successful Builds',
+                  //   status: pipelineStats.successfulPipelines > 0 ? 'Good' : 'No Pipelines',
+                  //   value: pipelineStats.successfulPipelines,
+                  //   unit: 'pipelines',
+                  //   isHealthy: pipelineStats.successfulPipelines > 0,
+                  //   description: 'Counts the number of successful CI/CD pipeline builds.',
+                  //   source: 'https://circleci.com/blog/how-to-measure-devops-success-4-key-metrics/'
+                  // },
+                  // {
+                  //   title: 'Failed Builds',
+                  //   status: pipelineStats.failedPipelines === 0 ? 'Perfect' : 'Has Failures',
+                  //   value: pipelineStats.failedPipelines,
+                  //   unit: 'pipelines',
+                  //   isHealthy: pipelineStats.failedPipelines === 0,
+                  //   description: 'Tracks the number of failed CI/CD pipeline builds.',
+                  //   source: ''
+                  // },
                   {
                     title: 'Build Success Rate',
-                    status: pipelineStats.successRate >= 80 ? 'Good' : 'Moderate',
+                    status: pipelineStats.successRate >= 90 ? 'Good' : 'Moderate',
                     value: `${pipelineStats.successRate.toFixed(1)}%`,
                     unit: 'percentage of build success',
-                    isHealthy: pipelineStats.successRate >= 80,
-                    description: 'Measures the percentage of successful builds in the CI/CD pipeline.'
+                    isHealthy: pipelineStats.successRate >= 90,
+                    description: 'Measures the percentage of successful builds in the CI/CD pipeline.',
+                    source: 'https://circleci.com/blog/how-to-measure-devops-success-4-key-metrics/'
                   },
                   {
                     title: 'Pipeline Health',
                     status: `${pipelineStats.successRate.toFixed(0)}% Success`,
                     value: pipelineStats.deploymentFrequency.toFixed(1),
                     unit: 'deployments/day',
-                    isHealthy: pipelineStats.successRate >= 80,
-                    description: 'Evaluates the frequency and reliability of deployments.'
+                    isHealthy: pipelineStats.deploymentFrequency >= 1,
+                    description: 'Evaluates the frequency and reliability of deployments.',
+                    source: 'https://cloud.google.com/blog/products/devops-sre/using-the-four-keys-to-measure-your-devops-performance'
                   }
                 ]
               },
@@ -157,23 +164,26 @@
                     value: contributorStats.busFactor,
                     unit: 'contributors',
                     isHealthy: contributorStats.busFactor > 2,
-                    description: 'Assesses the risk of knowledge concentration among contributors.'
+                    description: 'Assesses the risk of knowledge concentration among contributors.',
+                    source: 'https://en.wikipedia.org/wiki/Bus_factor'
                   },
                   {
                     title: 'Top Contributor',
                     status: `${Math.round(contributorStats.totalCommits * (contributorStats.topContributorPercentage / 100))} commits`,
                     value: contributorStats.topContributor.substring(0, 14) + '...',
                     unit: `${contributorStats.topContributorPercentage.toFixed(2)}% of Commits`,
-                    isHealthy: contributorStats.giniCoefficient < 0.4,
-                    description: 'Identifies the contributor with the highest number of commits.'
+                    isHealthy: true,
+                    description: 'Identifies the contributor with the highest number of commits.',
+                    source: 'https://about.gitlab.com/blog/commits-do-not-equal-productivity/'
                   },
                   {
                     title: 'Commit Distribution',
-                    status: contributorStats.giniCoefficient < 0.4 ? 'Healthy' : 'At Risk',
+                    status: contributorStats.giniCoefficient < 0.5 ? 'Healthy' : 'At Risk',
                     value: contributorStats.giniCoefficient.toFixed(2),
                     unit: 'Gini Coefficient',
-                    isHealthy: contributorStats.giniCoefficient < 0.4,
-                    description: 'Analyzes the distribution of commits among contributors.'
+                    isHealthy: contributorStats.giniCoefficient < 0.5,
+                    description: 'Analyzes the distribution of commits among contributors.',
+                    source: 'https://en.wikipedia.org/wiki/Gini_coefficient'
                   }
                 ]
               },
@@ -191,7 +201,8 @@
                     isHealthy: branchStats?.healthyBranchCount !== undefined && branchStats?.totalBranches !== undefined
                       ? (branchStats.healthyBranchCount / branchStats.totalBranches) > 0.7
                       : false,
-                    description: 'Evaluates the health of branches based on activity and merges.'
+                    description: 'Evaluates the health of branches based on activity and merges.',
+                    source: 'https://www.copado.com/resources/blog/devops-branching-strategies'
                   },
                   {
                     title: 'Stagnant Branches',
@@ -205,7 +216,8 @@
                     isHealthy: branchStats?.stagnantBranchCount !== undefined && branches.length > 0
                       ? (branchStats.stagnantBranchCount / branches.length) <= 0.3
                       : false,
-                    description: 'Tracks the number of branches inactive for over 30 days.'
+                    description: 'Tracks the number of branches inactive for over 30 days.',
+                    source: 'https://www.copado.com/resources/blog/devops-branching-strategies'
                   }
                 ]
               },
@@ -219,7 +231,8 @@
                     value: pullRequestStats?.totalPRs || 0,
                     unit: 'pull requests',
                     isHealthy: pullRequestStats?.totalPRs > 0,
-                    description: 'Counts the total number of pull requests in the repository.'
+                    description: 'Counts the total number of pull requests in the repository.',
+                    source: 'https://getdx.com/blog/pull-request/'
                   },
                   {
                     title: 'PR Frequency',
@@ -227,7 +240,8 @@
                     value: (pullRequestStats?.averagePRPerDay || 0).toFixed(1),
                     unit: 'PRs/day',
                     isHealthy: pullRequestStats?.averagePRPerDay >= 2,
-                    description: 'Measures the average number of pull requests per day.'
+                    description: 'Measures the average number of pull requests per day.',
+                    source: 'https://www.seporaitis.net/posts/2021/07/19/what-can-75000-pull-requests-tell/'
                   },
                   {
                     title: 'Top PR Contributor',
@@ -235,7 +249,8 @@
                     value: (pullRequestStats?.topContributor || '').substring(0, 14) + '...',
                     unit: `${(pullRequestStats?.topContributorPRs || 0)} PRs`,
                     isHealthy: pullRequestStats?.topContributor !== '',
-                    description: 'Identifies the contributor with the highest number of pull requests.'
+                    description: 'Identifies the contributor with the highest number of pull requests.',
+                    source: 'https://getdx.com/blog/pull-request/'
                   },
                   {
                     title: 'Top Contributor Rate',
@@ -243,7 +258,8 @@
                     value: (pullRequestStats?.topContributorAvgPRPerDay || 0).toFixed(1),
                     unit: 'PRs/day',
                     isHealthy: pullRequestStats?.topContributorAvgPRPerDay >= 1,
-                    description: 'Measures the average pull request rate of the top contributor.'
+                    description: 'Measures the average pull request rate of the top contributor.',
+                    source: 'https://blog.codacy.com/pull-request-best-practices'
                   },
                   {
                     title: 'Average LoC per PR',
@@ -251,7 +267,8 @@
                     value: (pullRequestStats?.averageLoCPerPR || 0).toFixed(1),
                     unit: 'lines/PR',
                     isHealthy: pullRequestStats?.averageLoCPerPR < 300,
-                    description: 'Evaluates the average lines of code per pull request.'
+                    description: 'Evaluates the average lines of code per pull request.',
+                    source: 'https://graphite.dev/blog/the-ideal-pr-is-50-lines-long'
                   }
                 ]
               }
@@ -295,8 +312,11 @@
               </DialogTitle>
               <div class="mt-4 space-y-4">
                 <ul class="list-disc pl-5 text-sm text-gray-600 dark:text-gray-300">
-                  <li v-for="(description, index) in selectedMetric?.description" :key="index">
-                    <strong>{{ description.title  }}</strong>: {{ description.description }}
+                  <li v-for="(info, index) in selectedMetric?.info" :key="index">
+                    <strong>{{ info.title  }}</strong>: {{ info.description }}
+                    <a :href="info.source" target="_blank" class="text-indigo-600 hover:underline">
+                      Read More
+                    </a>
                   </li>
                 </ul>
               </div>
@@ -344,7 +364,7 @@ const azureStore = useAzureStore()
 const error = ref<string | null>(null)
 const loading = ref(false)
 const showMetricsInfo = ref(false)
-const selectedMetric = ref<null | { title: string; description: any }>(null)
+const selectedMetric = ref<null | { title: string; info: any }>(null)
 const repository = ref(null)
 const commits = ref<Commit[]>([])
 const pipelines = ref<Pipeline[]>([])
@@ -524,7 +544,7 @@ const loadData = async () => {
   }
 }
 
-const showMetricInfo = (metric: { title: string; description: any }) => {
+const showMetricInfo = (metric: { title: string; info: any }) => {
   selectedMetric.value = metric
   showMetricsInfo.value = true
 }
