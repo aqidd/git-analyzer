@@ -1,189 +1,213 @@
-import { describe, it, expect, vi } from "vitest";
-import { AzureService } from "../azure.service";
-import type { PullRequest, TimeFilter } from "@/types/repository";
+import { describe, it, expect, beforeAll, afterEach, afterAll, beforeEach } from 'vitest'
+import { server } from '@/mocks/server'
+import { http } from 'msw'
+import { AzureService } from '../azure.service'
+import type { TimeFilter } from '@/types/repository'
 
-// filepath: /Users/klinikpintar2417/Documents/OpenSource/git-analyzer/src/services/azure.service.test.ts
+const AZURE_BASE_URL = 'https://dev.azure.com'
+const TEST_ORGANIZATION = 'test-org'
+const TEST_PROJECT_ID = 'project1' // Matches mockAzureProjects
+const TEST_PROJECT_NAME = 'Project Alpha' // Matches mockAzureProjects
+const TEST_REPO_ID = 'repo1' // Matches mockAzureRepo
+const VALID_AZURE_TOKEN = 'VALID_AZURE_PAT'
+const INVALID_AZURE_TOKEN = 'INVALID_AZURE_PAT' // For testing auth errors
 
-describe("AzureService - getPullRequests", () => {
-  const azureService = new AzureService();
-  azureService.setToken("mock-token");
-  azureService.setOrganization("mock-organization");
+// --- MSW Server Setup ---
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+afterEach(() => server.resetHandlers())
+afterAll(() => server.close())
 
-  const mockProjectId = "mock-project-id";
-  const mockRepoId = "mock-repo-id";
-  const mockTimeFilter: TimeFilter = {
-    startDate: "2023-01-01",
-    endDate: "2023-01-31",
-  };
+describe('AzureService', () => {
+  let service: AzureService
 
-  const mockPullRequestsResponse = {
-    count: 2,
-    value: [
-      {
-        pullRequestId: 1,
-        title: "Fix bug",
-        description: "Fixes a critical bug",
-        status: "completed",
-        mergeStatus: "succeeded",
-        creationDate: "2023-01-10T10:00:00Z",
-        closedDate: "2023-01-11T12:00:00Z",
-        createdBy: {
-          id: "user-1",
-          displayName: "Alice",
-          uniqueName: "alice@example.com",
-        },
-        sourceRefName: "refs/heads/feature-branch",
-        targetRefName: "refs/heads/main",
-        isDraft: false,
-        reviewers: [
-          {
-            id: "user-2",
-            displayName: "Bob",
-            uniqueName: "bob@example.com",
-          },
-        ],
-        labels: ["bugfix"],
-      },
-      {
-        pullRequestId: 2,
-        title: "Add feature",
-        description: "Adds a new feature",
-        status: "active",
-        creationDate: "2023-01-15T14:00:00Z",
-        createdBy: {
-          id: "user-3",
-          displayName: "Charlie",
-          uniqueName: "charlie@example.com",
-        },
-        sourceRefName: "refs/heads/feature-2",
-        targetRefName: "refs/heads/main",
-        isDraft: true,
-        reviewers: [],
-        labels: [],
-      },
-    ],
-  };
+  beforeEach(() => {
+    service = new AzureService()
+    service.setToken(VALID_AZURE_TOKEN)
+    service.setOrganization(TEST_ORGANIZATION)
+    // Note: some mock handlers in handlers.ts might use a hardcoded "test-org"
+    // ensure TEST_ORGANIZATION matches that, or make mocks more dynamic
+  })
 
-  const mockThreadsResponse = {
-    count: 1,
-    value: [
-      {
-        status: "active",
-        comments: [
-          {
-            publishedDate: "2023-01-10T11:00:00Z",
-          },
-        ],
-      },
-    ],
-  };
+  // --- Test validateToken ---
+  describe('validateToken', () => {
+    it('should return true for a valid token', async () => {
+      const isValid = await service.validateToken()
+      expect(isValid).toBe(true)
+    })
 
-  const mockDetailsResponse = {
-    lastMergeSourceCommit: {
-      changeCounts: {
-        Add: 50,
-        Delete: 20,
-        Edit: 5,
-      },
-      committer: {
-        date: "2023-01-11T12:00:00Z",
-      },
-    },
-  };
+    it('should return false for an invalid token or API error', async () => {
+      service.setToken(INVALID_AZURE_TOKEN) // Use a token the mock handler will reject
+      server.use(
+        http.get(`${AZURE_BASE_URL}/${TEST_ORGANIZATION}/_apis/projects`, ({ request }) => {
+          const auth = request.headers.get('Authorization') || '';
+          // Assuming checkAzureAuth in handlers.ts would fail for INVALID_AZURE_TOKEN
+          // or we can force a 401 if the token is "INVALID..."
+          // For this test, let's ensure our mock specifically returns 401 for this token
+          const expectedInvalidAuth = `Basic ${btoa(`:${INVALID_AZURE_TOKEN}`)}`;
+          if (auth === expectedInvalidAuth) {
+            return new Response(JSON.stringify({ message: 'Auth failed' }), { status: 401, statusText: 'Unauthorized' })
+          }
+          // Fallback for other types of errors, or if the generic handler doesn't differentiate enough
+          return new Response(JSON.stringify({ message: 'Generic error' }), { status: 500, statusText: 'Server Error' })
+        })
+      )
+      const isValid = await service.validateToken()
+      expect(isValid).toBe(false)
+    })
+  })
 
-  vi.spyOn(azureService as any, "request").mockImplementation(
-    async (path: unknown): Promise<any> => {
-      if (typeof path === "string" && path.includes("pullrequests?")) {
-        return mockPullRequestsResponse;
-      } else if (typeof path === "string" && path.includes("threads")) {
-        return mockThreadsResponse;
-      } else if (typeof path === "string" && path.includes("pullrequests/")) {
-        return mockDetailsResponse;
-      }
-      throw new Error("Unexpected API call");
-    }
-  );
+  // --- Test getProjects ---
+  describe('getProjects', () => {
+    it('should fetch projects successfully', async () => {
+      const projects = await service.getProjects()
+      expect(projects).toBeInstanceOf(Array)
+      expect(projects.length).toBeGreaterThan(0)
+      expect(projects[0].id).toBe('project1')
+      expect(projects[0].name).toBe('Project Alpha')
+    })
 
-  it.skip("fetches and processes pull requests correctly", async () => {
-    const pullRequests = await azureService.getPullRequests(
-      mockProjectId,
-      mockRepoId,
-      mockTimeFilter
-    );
+    it('should throw an error if API request fails for getProjects', async () => {
+      server.use(
+        http.get(`${AZURE_BASE_URL}/${TEST_ORGANIZATION}/_apis/projects`, ({ request }) => {
+          return new Response(JSON.stringify({ message: 'Server Error' }), {
+            status: 500, statusText: 'Server Error', headers: { 'Content-Type': 'application/json' }
+          })
+        })
+      )
+      await expect(service.getProjects()).rejects.toThrow('Azure DevOps API request failed: Server Error')
+    })
+  })
 
-    expect(pullRequests).toHaveLength(2);
+  // --- Test getRepositories ---
+  describe('getRepositories', () => {
+    it('should fetch repositories for the organization if no projectId is given', async () => {
+      const repos = await service.getRepositories() // No project ID
+      expect(repos).toBeInstanceOf(Array)
+      expect(repos.length).toBeGreaterThan(0)
+      // Based on the generic org-level handler in handlers.ts
+      expect(repos[0].name).toBe('OrgRepo1')
+    })
 
-    // Validate the first pull request
-    const pr1 = pullRequests[0];
-    expect(pr1.id).toBe(1);
-    expect(pr1.title).toBe("Fix bug");
-    expect(pr1.description).toBe("Fixes a critical bug");
-    expect(pr1.state).toBe("merged");
-    expect(pr1.createdAt).toBe("2023-01-10T10:00:00Z");
-    expect(pr1.updatedAt).toBe("2023-01-11T12:00:00Z");
-    expect(pr1.mergedAt).toBe("2023-01-11T12:00:00Z");
-    expect(pr1.closedAt).toBe("2023-01-11T12:00:00Z");
-    expect(pr1.author.name).toBe("Alice");
-    expect(pr1.sourceBranch).toBe("feature-branch");
-    expect(pr1.targetBranch).toBe("main");
-    expect(pr1.isDraft).toBe(false);
-    expect(pr1.comments).toBe(1);
-    expect(pr1.reviewCount).toBe(1);
-    expect(pr1.additions).toBe(50);
-    expect(pr1.deletions).toBe(20);
-    expect(pr1.changedFiles).toBe(5);
-    // expect(pr1.locChanged).toBe(70)
-    expect(pr1.labels).toEqual(["bugfix"]);
-    expect(pr1.timeToMerge).toBeCloseTo(26, 1); // ~26 hours
-    expect(pr1.timeToFirstReview).toBeCloseTo(1, 1); // ~1 hour
+    it('should fetch repositories for a specific project if projectId is given', async () => {
+      // This test relies on the :organization/_apis/:projectId/git/repositories handler
+      const repos = await service.getRepositories(TEST_PROJECT_ID)
+      expect(repos).toBeInstanceOf(Array)
+      expect(repos.length).toBeGreaterThan(0)
+      expect(repos[0].name).toBe('ProjectRepo1')
+      expect(repos[0].project.id).toBe(TEST_PROJECT_ID)
+    })
 
-    // Validate the second pull request
-    const pr2 = pullRequests[1];
-    expect(pr2.id).toBe(2);
-    expect(pr2.title).toBe("Add feature");
-    expect(pr2.description).toBe("Adds a new feature");
-    expect(pr2.state).toBe("open");
-    expect(pr2.createdAt).toBe("2023-01-15T14:00:00Z");
-    expect(pr2.updatedAt).toBe("2023-01-15T14:00:00Z");
-    expect(pr2.mergedAt).toBeUndefined();
-    expect(pr2.closedAt).toBeUndefined();
-    expect(pr2.author.name).toBe("Charlie");
-    expect(pr2.sourceBranch).toBe("feature-2");
-    expect(pr2.targetBranch).toBe("main");
-    expect(pr2.isDraft).toBe(true);
-    expect(pr2.comments).toBe(0);
-    expect(pr2.reviewCount).toBe(0);
-    expect(pr2.additions).toBe(0);
-    expect(pr2.deletions).toBe(0);
-    expect(pr2.changedFiles).toBe(0);
-    // expect(pr2.locChanged).toBe(0)
-    expect(pr2.labels).toEqual([]);
-    expect(pr2.timeToMerge).toBeUndefined();
-    expect(pr2.timeToFirstReview).toBeUndefined();
-  });
+     it('should throw an error if API request fails for getRepositories (org level)', async () => {
+      server.use(
+        http.get(`${AZURE_BASE_URL}/${TEST_ORGANIZATION}/_apis/git/repositories`, ({ request }) => {
+          return new Response(JSON.stringify({ message: 'Repo Fetch Error' }), {
+            status: 500, statusText: 'Repo Fetch Error', headers: { 'Content-Type': 'application/json' }
+          })
+        })
+      )
+      await expect(service.getRepositories()).rejects.toThrow('Azure DevOps API request failed: Repo Fetch Error')
+    })
+  })
 
-  it.skip("handles empty pull request list", async () => {
-    vi.spyOn(azureService as any, "request").mockResolvedValueOnce({
-      count: 0,
-      value: [],
+  // --- Test getBranchStats ---
+  describe('getBranchStats', () => {
+    it('should fetch branch stats successfully', async () => {
+      // This test relies on the :organization/_apis/:projectId/git/repositories/:repoId/stats/branches handler
+      const stats = await service.getBranchStats(TEST_PROJECT_ID, TEST_REPO_ID);
+      expect(stats).toBeInstanceOf(Array);
+      expect(stats[0].name).toBe('main');
     });
 
-    const pullRequests = await azureService.getPullRequests(
-      mockProjectId,
-      mockRepoId,
-      mockTimeFilter
-    );
-
-    expect(pullRequests).toHaveLength(0);
+    it('should throw an error if API request fails for getBranchStats', async () => {
+      server.use(
+        http.get(`${AZURE_BASE_URL}/${TEST_ORGANIZATION}/_apis/${TEST_PROJECT_ID}/git/repositories/${TEST_REPO_ID}/stats/branches`, () => {
+          return new Response(null, { status: 500, statusText: 'Stats Error' });
+        })
+      );
+      await expect(service.getBranchStats(TEST_PROJECT_ID, TEST_REPO_ID)).rejects.toThrow('Stats Error');
+    });
   });
 
-  it("throws an error for failed API calls", async () => {
-    vi.spyOn(azureService as any, "request").mockRejectedValueOnce(
-      new Error("API error")
-    );
+  // --- Test getCommits ---
+  describe('getCommits', () => {
+    const timeFilter: TimeFilter = {
+      startDate: new Date('2023-01-01T00:00:00Z').toISOString(),
+      endDate: new Date('2023-01-31T23:59:59Z').toISOString(),
+    }
+    it('should fetch commits successfully', async () => {
+      // This test relies on the generic handlers for:
+      // 1. /_apis/projects/:projectId (to get project name TEST_PROJECT_NAME)
+      // 2. /:organization/:projectName/_apis/git/repositories/:repoId/commits
+      const commits = await service.getCommits(TEST_PROJECT_ID, TEST_REPO_ID, timeFilter)
+      expect(commits).toBeInstanceOf(Array)
+      expect(commits.length).toBeGreaterThan(0)
+      expect(commits[0].id).toBe('commit1')
+    })
+  })
 
-    await expect(
-      azureService.getPullRequests(mockProjectId, mockRepoId, mockTimeFilter)
-    ).rejects.toThrow("API error");
+  // --- Test getPipelines ---
+  describe('getPipelines', () => {
+    const timeFilter: TimeFilter = {
+      startDate: new Date('2023-01-01T00:00:00Z').toISOString(),
+      endDate: new Date('2023-01-31T23:59:59Z').toISOString(),
+    }
+    it('should fetch pipelines successfully', async () => {
+      // Relies on:
+      // 1. /_apis/projects/:projectId (to get project name TEST_PROJECT_NAME)
+      // 2. /:organization/:projectName/_apis/build/builds
+      const pipelines = await service.getPipelines(TEST_PROJECT_ID, TEST_REPO_ID, timeFilter)
+      expect(pipelines).toBeInstanceOf(Array)
+      expect(pipelines.length).toBeGreaterThan(0)
+      expect(pipelines[0].id).toBe(1)
+      expect(pipelines[0].status).toBe('success')
+    })
+  })
+
+  // --- Test getBranches ---
+  describe('getBranches', () => {
+    it('should fetch branches successfully', async () => {
+      // Relies on:
+      // 1. /_apis/projects/:projectId (to get project name TEST_PROJECT_NAME)
+      // 2. /:organization/:projectName/_apis/git/repositories/:repoId/refs
+      const branches = await service.getBranches(TEST_PROJECT_ID, TEST_REPO_ID);
+      expect(branches).toBeInstanceOf(Array);
+      expect(branches.length).toBeGreaterThan(0);
+      expect(branches.find(b => b.name === 'main')).toBeDefined();
+    });
   });
-});
+
+  // --- Test getFiles ---
+  describe('getFiles', () => {
+    it('should fetch files successfully', async () => {
+      // Relies on:
+      // 1. /_apis/projects/:projectId (to get project name TEST_PROJECT_NAME)
+      // 2. /:organization/:projectName/_apis/git/repositories/:repoId/items
+      const files = await service.getFiles(TEST_PROJECT_ID, TEST_REPO_ID);
+      expect(files).toBeInstanceOf(Array);
+      expect(files.length).toBeGreaterThan(0);
+      expect(files.find(f => f.path === '/file.ts' && f.type === 'blob')).toBeDefined();
+    });
+  });
+
+  // --- Test getPullRequests ---
+  describe('getPullRequests', () => {
+    const timeFilter: TimeFilter = {
+      startDate: new Date('2023-01-01T00:00:00Z').toISOString(),
+      endDate: new Date('2024-12-31T23:59:59Z').toISOString(),
+    };
+    it('should fetch pull requests successfully', async () => {
+      // This test relies on generic handlers for:
+      // 1. /_apis/projects/:projectId (to get project name TEST_PROJECT_NAME)
+      // 2. /:organization/:projectName/_apis/git/repositories/:repoId/pullrequests (list)
+      // 3. /:organization/:projectName/_apis/git/repositories/:repoId/pullrequests/:prId (detail, in loop)
+      // 4. /:organization/:projectName/_apis/git/repositories/:repoId/pullrequests/:prId/threads (threads, in loop)
+      const prs = await service.getPullRequests(TEST_PROJECT_ID, TEST_REPO_ID, timeFilter);
+      expect(prs).toBeInstanceOf(Array);
+      expect(prs.length).toBeGreaterThan(0);
+      expect(prs[0].id).toBe(1);
+      expect(prs[0].title).toBe('My First PR');
+      expect(prs[0].author).toBeDefined();
+      expect(prs[0].reviewers).toBeInstanceOf(Array);
+    });
+  });
+})
