@@ -1,6 +1,8 @@
 // Import necessary modules
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GitlabService } from '../gitlab.service';
-import { vi } from 'vitest';
+// The separate `import { vi } from 'vitest';` is now redundant
+// import { vi } from 'vitest';
 
 // Mock the global fetch function
 global.fetch = vi.fn();
@@ -31,231 +33,306 @@ describe('GitlabService', () => {
     it('should allow setting a custom baseUrl', async () => {
       const customUrl = 'https://custom.gitlab.instance.com';
       gitlabService.setBaseUrl(customUrl);
-      // To verify, make a call and check the URL used by fetch
-      (fetch as vi.Mock).mockResolvedValueOnce({ ok: true, json: async () => ({}) });
-      await gitlabService.validateToken(mockToken);
+      gitlabService.setToken(mockToken); // Set token for the service instance
+      (fetch as vi.Mock).mockResolvedValueOnce({ ok: true, json: async () => ({}), statusText: 'OK' });
+      await gitlabService.validateToken(); // No token arg needed
       expect(fetch).toHaveBeenCalledWith(
         `${customUrl}/api/v4/user`,
-        expect.objectContaining({ headers: { Authorization: `Bearer ${mockToken}` } })
+        expect.objectContaining({ headers: { 'Content-Type': 'application/json', 'PRIVATE-TOKEN': mockToken } })
       );
     });
   });
 
   describe('validateToken', () => {
+    beforeEach(() => {
+      gitlabService.setToken(mockToken);
+    });
+
     it('should return true for a valid token', async () => {
       (fetch as vi.Mock).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ id: 1, username: 'testuser' }), // Gitlab user response
+        json: async () => ({ id: 1, username: 'testuser' }),
+        statusText: 'OK'
       });
-      const isValid = await gitlabService.validateToken(mockToken);
+      const isValid = await gitlabService.validateToken();
       expect(isValid).toBe(true);
       expect(fetch).toHaveBeenCalledWith('https://gitlab.com/api/v4/user', {
-        headers: { Authorization: `Bearer ${mockToken}` },
+        headers: { 'Content-Type': 'application/json', 'PRIVATE-TOKEN': mockToken },
       });
     });
 
-    it('should return false for an invalid token', async () => {
-      (fetch as vi.Mock).mockResolvedValueOnce({ ok: false, status: 401 });
-      const isValid = await gitlabService.validateToken('invalid_token');
+    it('should return false for an invalid token (API returns error)', async () => {
+      (fetch as vi.Mock).mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' });
+      const isValid = await gitlabService.validateToken();
       expect(isValid).toBe(false);
     });
 
-    it('should return false if the API call fails', async () => {
-      (fetch as vi.Mock).mockRejectedValueOnce(new Error('API Error'));
-      const isValid = await gitlabService.validateToken(mockToken);
+    it('should return false if the API call fails (network error)', async () => {
+      (fetch as vi.Mock).mockRejectedValueOnce(new Error('Network Error'));
+      const isValid = await gitlabService.validateToken();
       expect(isValid).toBe(false);
     });
   });
 
   describe('getRepositories', () => {
+    beforeEach(() => {
+      gitlabService.setToken(mockToken);
+    });
+
     it('should return a list of projects (repositories)', async () => {
-      const mockProjects = [{ id: 1, name: 'repo1' }, { id: 2, name: 'repo2' }];
+      const mockApiResponse = [{ id: 1, name: 'repo1' }, { id: 2, name: 'repo2' }]; // Raw API response
       (fetch as vi.Mock).mockResolvedValueOnce({
         ok: true,
-        json: async () => mockProjects,
+        json: async () => mockApiResponse,
+        statusText: 'OK'
       });
-      const repos = await gitlabService.getRepositories(mockToken);
-      expect(repos).toEqual(mockProjects);
-      expect(fetch).toHaveBeenCalledWith('https://gitlab.com/api/v4/projects?membership=true', {
-        headers: { Authorization: `Bearer ${mockToken}` },
+      const repos = await gitlabService.getRepositories(); // No token arg
+      expect(repos).toEqual(mockApiResponse); // Service returns data as is
+      expect(fetch).toHaveBeenCalledWith('https://gitlab.com/api/v4/projects?membership=true&order_by=last_activity_at&per_page=100', {
+        headers: { 'Content-Type': 'application/json', 'PRIVATE-TOKEN': mockToken },
       });
     });
 
-    it('should return an empty list if API call fails or token is invalid', async () => {
-      (fetch as vi.Mock).mockResolvedValueOnce({ ok: false, status: 401 });
-      const repos = await gitlabService.getRepositories('invalid_token');
-      expect(repos).toEqual([]);
+    it('should throw an error if API call fails (non-OK response)', async () => {
+      (fetch as vi.Mock).mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' });
+      await expect(gitlabService.getRepositories()).rejects.toThrow('GitLab API error: Unauthorized');
     });
 
-     it('should return an empty list if fetch throws an error', async () => {
-      (fetch as vi.Mock).mockRejectedValueOnce(new Error('API Error'));
-      const repos = await gitlabService.getRepositories(mockToken);
-      expect(repos).toEqual([]);
+    it('should throw an error if API call fails (network error)', async () => {
+      (fetch as vi.Mock).mockRejectedValueOnce(new Error('Network Error'));
+      await expect(gitlabService.getRepositories()).rejects.toThrow('Network Error');
     });
   });
 
   describe('getBranches', () => {
-    it('should return a list of branches for a project', async () => {
-      const mockBranches = [{ name: 'main', protected: false }, { name: 'dev', protected: true }];
-      (fetch as vi.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockBranches,
-      });
-      const branches = await gitlabService.getBranches(mockToken, mockProjectId);
-      expect(branches).toEqual(mockBranches);
-      expect(fetch).toHaveBeenCalledWith(`https://gitlab.com/api/v4/projects/${mockProjectId}/repository/branches`, {
-        headers: { Authorization: `Bearer ${mockToken}` },
-      });
+    const expectedHeaders = { 'Content-Type': 'application/json', 'PRIVATE-TOKEN': mockToken };
+    beforeEach(() => {
+      gitlabService.setToken(mockToken);
     });
 
-    it('should return an empty list if API call fails', async () => {
-      (fetch as vi.Mock).mockRejectedValueOnce(new Error('API Error'));
-      const branches = await gitlabService.getBranches(mockToken, mockProjectId);
-      expect(branches).toEqual([]);
+    it('should return a list of mapped branches for a project', async () => {
+      const rawMockBranches = [
+        { name: 'main', commit: { id: 'sha1', message: 'Commit 1', author_name: 'User1', committed_date: '2023-01-01T10:00:00Z' }, protected: true },
+        { name: 'dev', commit: { id: 'sha2', message: 'Commit 2', author_name: 'User2', committed_date: '2023-01-02T10:00:00Z' }, protected: false },
+      ];
+      (fetch as vi.Mock).mockResolvedValueOnce({ ok: true, json: async () => rawMockBranches, statusText: 'OK' });
+
+      // Note: The service's getBranches 'owner' param is treated as projectId for GitLab
+      const branches = await gitlabService.getBranches(mockProjectId, ''); // repoName not used by service
+
+      expect(branches).toEqual([
+        { name: 'main', lastCommitDate: '2023-01-01T10:00:00Z', lastCommitSha: 'sha1', lastCommitMessage: 'Commit 1', lastCommitAuthor: 'User1', protected: true },
+        { name: 'dev', lastCommitDate: '2023-01-02T10:00:00Z', lastCommitSha: 'sha2', lastCommitMessage: 'Commit 2', lastCommitAuthor: 'User2', protected: false },
+      ]);
+      expect(fetch).toHaveBeenCalledWith(`https://gitlab.com/api/v4/projects/${mockProjectId}/repository/branches`, { headers: expectedHeaders });
+    });
+
+    it('should throw an error if API call fails', async () => {
+      (fetch as vi.Mock).mockRejectedValueOnce(new Error('Network Error'));
+      await expect(gitlabService.getBranches(mockProjectId, '')).rejects.toThrow('Network Error');
     });
   });
 
   describe('getCommits', () => {
-    const mockBranchName = 'main';
-    it('should return a list of commits for a branch', async () => {
-      const mockCommits = [{ id: '123', title: 'Initial commit' }];
-      (fetch as vi.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockCommits,
-      });
-      const commits = await gitlabService.getCommits(mockToken, mockProjectId, mockBranchName);
-      expect(commits).toEqual(mockCommits);
-      expect(fetch).toHaveBeenCalledWith(`https://gitlab.com/api/v4/projects/${mockProjectId}/repository/commits?ref_name=${mockBranchName}`, {
-        headers: { Authorization: `Bearer ${mockToken}` },
-      });
+    const mockTimeFilter: TimeFilter = { startDate: '2023-01-01T00:00:00Z', endDate: '2023-01-31T23:59:59Z' };
+    const expectedHeaders = { 'Content-Type': 'application/json', 'PRIVATE-TOKEN': mockToken };
+    beforeEach(() => {
+      gitlabService.setToken(mockToken);
     });
 
-    it('should return an empty list if API call fails', async () => {
-      (fetch as vi.Mock).mockRejectedValueOnce(new Error('API Error'));
-      const commits = await gitlabService.getCommits(mockToken, mockProjectId, mockBranchName);
-      expect(commits).toEqual([]);
+    it('should return a list of mapped commits', async () => {
+      const rawMockCommits = [
+        { id: 'sha1', message: 'Commit 1', author_name: 'User1', author_email: 'u1@e.com', created_at: '2023-01-10T10:00:00Z', web_url: 'url1', stats: { additions: 10, deletions: 5 } },
+        { id: 'sha2', message: 'Commit 2', author_name: 'User2', author_email: 'u2@e.com', created_at: '2023-01-11T10:00:00Z', web_url: 'url2', stats: { additions: 8, deletions: 2 } },
+      ];
+      (fetch as vi.Mock).mockResolvedValueOnce({ ok: true, json: async () => rawMockCommits, statusText: 'OK' });
+
+      const commits = await gitlabService.getCommits(Number(mockProjectId), mockTimeFilter); // projectId is number
+
+      expect(commits).toEqual([
+        { id: 'sha1', message: 'Commit 1', author_name: 'User1', author_email: 'u1@e.com', created_at: '2023-01-10T10:00:00Z', web_url: 'url1', code_added: 10, code_removed: 5 },
+        { id: 'sha2', message: 'Commit 2', author_name: 'User2', author_email: 'u2@e.com', created_at: '2023-01-11T10:00:00Z', web_url: 'url2', code_added: 8, code_removed: 2 },
+      ]);
+      const expectedUrl = `https://gitlab.com/api/v4/projects/${mockProjectId}/repository/commits?since=${mockTimeFilter.startDate}&until=${mockTimeFilter.endDate}&per_page=100`;
+      expect(fetch).toHaveBeenCalledWith(expectedUrl, { headers: expectedHeaders });
+    });
+
+    it('should throw an error if API call fails', async () => {
+      (fetch as vi.Mock).mockRejectedValueOnce(new Error('Network Error'));
+      await expect(gitlabService.getCommits(Number(mockProjectId), mockTimeFilter)).rejects.toThrow('Network Error');
     });
   });
 
   describe('getPipelines', () => {
-    it('should return a list of pipelines with mapped statuses', async () => {
-      const mockPipelinesRaw = [
-        { id: 1, status: 'success', web_url: 'url1' },
-        { id: 2, status: 'running', web_url: 'url2' },
-        { id: 3, status: 'pending', web_url: 'url3' },
-        { id: 4, status: 'failed', web_url: 'url4' },
-        { id: 5, status: 'canceled', web_url: 'url5' },
-        { id: 6, status: 'skipped', web_url: 'url6' },
-        { id: 7, status: 'created', web_url: 'url7' },
-        { id: 8, status: 'manual', web_url: 'url8' },
-        { id: 9, status: 'unknown_status', web_url: 'url9' }, // Test default case
+    const mockTimeFilter: TimeFilter = { startDate: '2023-01-01T00:00:00Z', endDate: '2023-01-31T23:59:59Z' };
+    const expectedHeaders = { 'Content-Type': 'application/json', 'PRIVATE-TOKEN': mockToken };
+    beforeEach(() => {
+      gitlabService.setToken(mockToken);
+    });
+
+    it('should return a list of mapped pipelines', async () => {
+      const rawMockPipelines = [
+        { id: 1, status: 'success', ref: 'main', sha: 'sha1', web_url: 'url1', created_at: '2023-01-10T00:00:00Z', updated_at: '2023-01-10T00:05:00Z' },
+        { id: 2, status: 'running', ref: 'dev', sha: 'sha2', web_url: 'url2', created_at: '2023-01-11T00:00:00Z', updated_at: '2023-01-11T00:05:00Z' },
+        // Add other statuses to test mapping: pending, failed, canceled, skipped, created, manual (maps to unknown by default in service if not directly handled)
+        { id: 3, status: 'pending', ref: 'feat1', sha: 'sha3', web_url: 'url3', created_at: '2023-01-12T00:00:00Z', updated_at: '2023-01-12T00:05:00Z' },
+        { id: 4, status: 'failed', ref: 'fix1', sha: 'sha4', web_url: 'url4', created_at: '2023-01-13T00:00:00Z', updated_at: '2023-01-13T00:05:00Z' },
+        { id: 5, status: 'canceled', ref: 'feat2', sha: 'sha5', web_url: 'url5', created_at: '2023-01-14T00:00:00Z', updated_at: '2023-01-14T00:05:00Z' },
+        { id: 6, status: 'skipped', ref: 'feat3', sha: 'sha6', web_url: 'url6', created_at: '2023-01-15T00:00:00Z', updated_at: '2023-01-15T00:05:00Z' },
+        { id: 7, status: 'created', ref: 'feat4', sha: 'sha7', web_url: 'url7', created_at: '2023-01-16T00:00:00Z', updated_at: '2023-01-16T00:05:00Z' },
+        { id: 8, status: 'manual', ref: 'feat5', sha: 'sha8', web_url: 'url8', created_at: '2023-01-17T00:00:00Z', updated_at: '2023-01-17T00:05:00Z' }, // manual is 'unknown'
       ];
-      (fetch as vi.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockPipelinesRaw,
-      });
-      const pipelines = await gitlabService.getPipelines(mockToken, mockProjectId);
+      (fetch as vi.Mock).mockResolvedValueOnce({ ok: true, json: async () => rawMockPipelines, statusText: 'OK' });
+
+      const pipelines = await gitlabService.getPipelines(Number(mockProjectId), mockTimeFilter);
+
       expect(pipelines).toEqual([
-        { id: 1, status: 'Success', url: 'url1' },
-        { id: 2, status: 'Running', url: 'url2' },
-        { id: 3, status: 'Pending', url: 'url3' },
-        { id: 4, status: 'Failed', url: 'url4' },
-        { id: 5, status: 'Canceled', url: 'url5' },
-        { id: 6, status: 'Skipped', url: 'url6' },
-        { id: 7, status: 'Created', url: 'url7' },
-        { id: 8, status: 'Manual', url: 'url8' },
-        { id: 9, status: 'Unknown', url: 'url9' },
+        { id: 1, status: 'success', ref: 'main', sha: 'sha1', web_url: 'url1', created_at: '2023-01-10T00:00:00Z', updated_at: '2023-01-10T00:05:00Z' },
+        { id: 2, status: 'running', ref: 'dev', sha: 'sha2', web_url: 'url2', created_at: '2023-01-11T00:00:00Z', updated_at: '2023-01-11T00:05:00Z' },
+        { id: 3, status: 'pending', ref: 'feat1', sha: 'sha3', web_url: 'url3', created_at: '2023-01-12T00:00:00Z', updated_at: '2023-01-12T00:05:00Z' },
+        { id: 4, status: 'failed', ref: 'fix1', sha: 'sha4', web_url: 'url4', created_at: '2023-01-13T00:00:00Z', updated_at: '2023-01-13T00:05:00Z' },
+        { id: 5, status: 'cancelled', ref: 'feat2', sha: 'sha5', web_url: 'url5', created_at: '2023-01-14T00:00:00Z', updated_at: '2023-01-14T00:05:00Z' },
+        { id: 6, status: 'skipped', ref: 'feat3', sha: 'sha6', web_url: 'url6', created_at: '2023-01-15T00:00:00Z', updated_at: '2023-01-15T00:05:00Z' },
+        { id: 7, status: 'created', ref: 'feat4', sha: 'sha7', web_url: 'url7', created_at: '2023-01-16T00:00:00Z', updated_at: '2023-01-16T00:05:00Z' },
+        { id: 8, status: 'unknown', ref: 'feat5', sha: 'sha8', web_url: 'url8', created_at: '2023-01-17T00:00:00Z', updated_at: '2023-01-17T00:05:00Z' },
       ]);
-      expect(fetch).toHaveBeenCalledWith(`https://gitlab.com/api/v4/projects/${mockProjectId}/pipelines`, {
-        headers: { Authorization: `Bearer ${mockToken}` },
-      });
+      const expectedUrl = `https://gitlab.com/api/v4/projects/${mockProjectId}/pipelines?updated_after=${mockTimeFilter.startDate}&updated_before=${mockTimeFilter.endDate}&per_page=100`;
+      expect(fetch).toHaveBeenCalledWith(expectedUrl, { headers: expectedHeaders });
     });
 
-    it('should return an empty list if API call fails', async () => {
-      (fetch as vi.Mock).mockRejectedValueOnce(new Error('API Error'));
-      const pipelines = await gitlabService.getPipelines(mockToken, mockProjectId);
-      expect(pipelines).toEqual([]);
+    it('should throw an error if API call fails', async () => {
+      (fetch as vi.Mock).mockRejectedValueOnce(new Error('Network Error'));
+      await expect(gitlabService.getPipelines(Number(mockProjectId), mockTimeFilter)).rejects.toThrow('Network Error');
     });
 
-    it('should return an empty list if response is not ok', async () => {
-      (fetch as vi.Mock).mockResolvedValueOnce({ ok: false });
-      const pipelines = await gitlabService.getPipelines(mockToken, mockProjectId);
-      expect(pipelines).toEqual([]);
+    it('should throw an error if response is not ok', async () => {
+      (fetch as vi.Mock).mockResolvedValueOnce({ ok: false, statusText: 'Forbidden' });
+      await expect(gitlabService.getPipelines(Number(mockProjectId), mockTimeFilter)).rejects.toThrow('GitLab API error: Forbidden');
     });
   });
 
   describe('getContributors', () => {
-    // Gitlab calls this "repository contributors"
-    it('should return a list of contributors (users)', async () => {
-      const mockContributors = [{ name: 'User One', email: 'user1@example.com', commits: 150 }];
-      (fetch as vi.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockContributors,
-      });
-      const contributors = await gitlabService.getContributors(mockToken, mockProjectId);
-      // The service might map these fields, adjust expectations accordingly.
-      // Assuming it returns them as-is for now.
-      expect(contributors).toEqual(mockContributors);
-      expect(fetch).toHaveBeenCalledWith(`https://gitlab.com/api/v4/projects/${mockProjectId}/repository/contributors`, {
-        headers: { Authorization: `Bearer ${mockToken}` },
-      });
+    const mockTimeFilter: TimeFilter = { startDate: '2023-01-01T00:00:00Z', endDate: '2023-01-31T23:59:59Z' };
+    const expectedHeaders = { 'Content-Type': 'application/json', 'PRIVATE-TOKEN': mockToken };
+    beforeEach(() => {
+      gitlabService.setToken(mockToken);
     });
 
-    it('should return an empty list if API call fails', async () => {
-      (fetch as vi.Mock).mockRejectedValueOnce(new Error('API Error'));
-      const contributors = await gitlabService.getContributors(mockToken, mockProjectId);
-      expect(contributors).toEqual([]);
+    it('should return a list of contributors aggregated from commits', async () => {
+      // Mock for the internal getCommits call
+      const rawMockCommits = [
+        { id: 'sha1', message: 'Commit 1', author_name: 'User1', author_email: 'u1@e.com', created_at: '2023-01-10T00:00:00Z', web_url: 'url1', stats: { additions: 10, deletions: 5 } },
+        { id: 'sha2', message: 'Commit 2', author_name: 'User1', author_email: 'u1@e.com', created_at: '2023-01-11T00:00:00Z', web_url: 'url2', stats: { additions: 8, deletions: 2 } },
+        { id: 'sha3', message: 'Commit 3', author_name: 'User2', author_email: 'u2@e.com', created_at: '2023-01-12T00:00:00Z', web_url: 'url3', stats: { additions: 12, deletions: 3 } },
+      ];
+      (fetch as vi.Mock).mockResolvedValueOnce({ ok: true, json: async () => rawMockCommits, statusText: 'OK' });
+
+      const contributors = await gitlabService.getContributors(Number(mockProjectId), mockTimeFilter);
+
+      expect(contributors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ name: 'User1', email: 'u1@e.com', commits: 2, additions: 0, deletions: 0 }), // Note: Service currently doesn't sum additions/deletions for GitLab contributors
+        expect.objectContaining({ name: 'User2', email: 'u2@e.com', commits: 1, additions: 0, deletions: 0 }),
+      ]));
+      expect(contributors.length).toBe(2);
+
+      const expectedCommitsUrl = `https://gitlab.com/api/v4/projects/${mockProjectId}/repository/commits?since=${mockTimeFilter.startDate}&until=${mockTimeFilter.endDate}&per_page=100`;
+      expect(fetch).toHaveBeenCalledWith(expectedCommitsUrl, { headers: expectedHeaders });
+    });
+
+    it('should throw an error if the underlying getCommits call fails', async () => {
+      (fetch as vi.Mock).mockRejectedValueOnce(new Error('Network Error'));
+      await expect(gitlabService.getContributors(Number(mockProjectId), mockTimeFilter)).rejects.toThrow('Network Error');
     });
   });
 
   describe('getFiles', () => {
-    // Gitlab calls this "repository tree"
     const mockPath = 'src';
-    it('should return a list of files and directories for a given path', async () => {
-      const mockFiles = [{ name: 'file1.ts', type: 'blob' }, { name: 'subdir', type: 'tree' }];
-      (fetch as vi.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockFiles,
-      });
-      const files = await gitlabService.getFiles(mockToken, mockProjectId, mockPath);
-      expect(files).toEqual(mockFiles.map(f => ({ ...f, type: f.type === 'blob' ? 'file' : 'dir' }))); // Mapping 'blob' to 'file' and 'tree' to 'dir'
-      expect(fetch).toHaveBeenCalledWith(`https://gitlab.com/api/v4/projects/${mockProjectId}/repository/tree?path=${mockPath}`, {
-        headers: { Authorization: `Bearer ${mockToken}` },
-      });
+    const expectedHeaders = { 'Content-Type': 'application/json', 'PRIVATE-TOKEN': mockToken };
+    beforeEach(() => {
+      gitlabService.setToken(mockToken);
     });
 
-    it('should return an empty list if API call fails', async () => {
-      (fetch as vi.Mock).mockRejectedValueOnce(new Error('API Error'));
-      const files = await gitlabService.getFiles(mockToken, mockProjectId, mockPath);
-      expect(files).toEqual([]);
+    it('should return a list of mapped files and directories for a given path', async () => {
+      const rawMockFiles = [
+        { path: 'src/file1.ts', type: 'blob', size: 1024, last_commit_at: '2023-01-01T10:00:00Z' },
+        { path: 'src/subdir', type: 'tree', last_commit_at: '2023-01-02T10:00:00Z' }, // size might be missing for tree
+      ];
+      (fetch as vi.Mock).mockResolvedValueOnce({ ok: true, json: async () => rawMockFiles, statusText: 'OK' });
+
+      const files = await gitlabService.getFiles(Number(mockProjectId), mockPath);
+
+      expect(files).toEqual([
+        { path: 'src/file1.ts', type: 'blob', size: 1024, last_modified: '2023-01-01T10:00:00Z' },
+        { path: 'src/subdir', type: 'tree', size: 0, last_modified: '2023-01-02T10:00:00Z' },
+      ]);
+      const expectedUrl = `https://gitlab.com/api/v4/projects/${mockProjectId}/repository/tree?path=${mockPath}&per_page=100`;
+      expect(fetch).toHaveBeenCalledWith(expectedUrl, { headers: expectedHeaders });
     });
 
-    it('should return an empty list for non-200 responses', async () => {
-        (fetch as vi.Mock).mockResolvedValueOnce({ ok: false, status: 404 });
-        const files = await gitlabService.getFiles(mockToken, mockProjectId, mockPath);
-        expect(files).toEqual([]);
+    it('should throw an error if API call fails', async () => {
+      (fetch as vi.Mock).mockRejectedValueOnce(new Error('Network Error'));
+      await expect(gitlabService.getFiles(Number(mockProjectId), mockPath)).rejects.toThrow('Network Error');
+    });
+
+    it('should throw an error for non-200 responses', async () => {
+      (fetch as vi.Mock).mockResolvedValueOnce({ ok: false, status: 404, statusText: 'Not Found' });
+      await expect(gitlabService.getFiles(Number(mockProjectId), mockPath)).rejects.toThrow('GitLab API error: Not Found');
     });
   });
 
   describe('getPullRequests', () => {
-    // Gitlab calls these "merge requests"
-    it('should return a list of merge requests', async () => {
-      const mockMRs = [{ title: 'Update README', iid: 1, author: { username: 'testuser' } }]; // 'iid' is the project-local ID for MRs
-      (fetch as vi.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockMRs,
-      });
-      const prs = await gitlabService.getPullRequests(mockToken, mockProjectId);
-      expect(prs).toEqual(mockMRs);
-      expect(fetch).toHaveBeenCalledWith(`https://gitlab.com/api/v4/projects/${mockProjectId}/merge_requests`, {
-        headers: { Authorization: `Bearer ${mockToken}` },
-      });
+    const mockTimeFilter: TimeFilter = { startDate: '2023-01-01T00:00:00Z', endDate: '2023-01-31T23:59:59Z' };
+    const expectedHeaders = { 'Content-Type': 'application/json', 'PRIVATE-TOKEN': mockToken };
+
+    beforeEach(() => {
+      gitlabService.setToken(mockToken);
+      // Ensure global.fetch is a fresh mock for each test in this suite
+      global.fetch = vi.fn();
     });
 
-    it('should return an empty list if API call fails', async () => {
-      (fetch as vi.Mock).mockRejectedValueOnce(new Error('API Error'));
-      const prs = await gitlabService.getPullRequests(mockToken, mockProjectId);
+    it('should return a list of mapped merge requests with details', async () => {
+      const rawMockMRList_API = [ // Simulate API response for list
+        { id: 1, iid: 101, title: 'MR 1', description: 'Desc 1', state: 'opened', created_at: '2023-01-15T10:00:00Z', updated_at: '2023-01-15T11:00:00Z', merged_at: null, closed_at: null, author: {id:1, name:'User1', username:'user1'}, reviewers:[], source_branch:'feature/mr1', target_branch:'main', work_in_progress:false, labels:['bug'] },
+        { id: 2, iid: 102, title: 'MR 2', created_at: '2022-12-15T10:00:00Z', author:{id:2, name:'User2', username:'user2'}, reviewers:[], source_branch:'feature/mr2', target_branch:'main', work_in_progress:false, labels:[] }, // This one should be filtered out by date
+      ];
+      const mockMRDetails1_API = { iid: 101, merged_at: null, created_at: '2023-01-15T10:00:00Z', changes_count: "15", user_notes_count: 5 };
+
+      (fetch as vi.Mock)
+        .mockResolvedValueOnce({ ok: true, json: async () => rawMockMRList_API, statusText: 'OK' }) // Call 1: List MRs
+        .mockResolvedValueOnce({ ok: true, json: async () => mockMRDetails1_API, statusText: 'OK' });// Call 2: Details for MR 101
+
+      const prs = await gitlabService.getPullRequests(Number(mockProjectId), mockTimeFilter);
+
+      expect(prs).toHaveLength(1); // Only MR1 should pass date filter
+      expect(prs[0]).toEqual(expect.objectContaining({ id: 1, title: 'MR 1' }));
+
+      const listUrl = `https://gitlab.com/api/v4/projects/${mockProjectId}/merge_requests?created_after=${mockTimeFilter.startDate}&created_before=${mockTimeFilter.endDate}&per_page=100`;
+      expect(fetch).toHaveBeenNthCalledWith(1, listUrl, { headers: expectedHeaders });
+      expect(fetch).toHaveBeenNthCalledWith(2, `https://gitlab.com/api/v4/projects/${mockProjectId}/merge_requests/101`, { headers: expectedHeaders });
+    });
+
+    it('should return empty list if no MRs pass date filter', async () => {
+      const rawMockMRList_API = [
+        { id: 2, iid: 102, title: 'MR 2', created_at: '2022-12-15T10:00:00Z', author:{id:2, name:'User2', username:'user2'}, reviewers:[], source_branch:'feature/mr2', target_branch:'main', work_in_progress:false, labels:[] },
+      ];
+      (fetch as vi.Mock).mockResolvedValueOnce({ ok: true, json: async () => rawMockMRList_API, statusText: 'OK' });
+      const prs = await gitlabService.getPullRequests(Number(mockProjectId), mockTimeFilter);
       expect(prs).toEqual([]);
+      expect(fetch).toHaveBeenCalledTimes(1); // Only list call, no detail calls
+    });
+
+
+    it('should throw an error if MR list API call fails', async () => {
+      (fetch as vi.Mock).mockRejectedValueOnce(new Error('Network Error'));
+      await expect(gitlabService.getPullRequests(Number(mockProjectId), mockTimeFilter)).rejects.toThrow('Network Error');
+    });
+
+    it('should throw an error if an MR detail call fails', async () => {
+      const rawMockMRList = [{ id: 1, iid: 101, created_at: '2023-01-15T00:00:00Z', author:{}, reviewers:[], labels:[] }];
+      (fetch as vi.Mock)
+        .mockResolvedValueOnce({ ok: true, json: async () => rawMockMRList, statusText: 'OK' })
+        .mockRejectedValueOnce(new Error('Network Error for MR detail'));
+      await expect(gitlabService.getPullRequests(Number(mockProjectId), mockTimeFilter)).rejects.toThrow('Network Error for MR detail');
     });
   });
 });
