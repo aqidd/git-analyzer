@@ -22,8 +22,7 @@ jobs:
       # Add pnpm setup step
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: '9.14.4'
+        # The version will be read from package.json's packageManager field
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
